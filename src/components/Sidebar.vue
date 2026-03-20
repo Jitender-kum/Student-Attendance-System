@@ -1,0 +1,381 @@
+<template>
+  <aside class="sidebar" :class="{ collapsed }">
+
+    <!-- Logo / Brand -->
+    <div class="sidebar-header">
+      <div class="sb-logo">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+          <rect width="48" height="48" rx="12" fill="var(--accent, #aa3bff)" />
+          <path d="M14 34V18l10-6 10 6v16" stroke="white" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+          <rect x="20" y="24" width="8" height="10" rx="1.5" fill="white" />
+          <circle cx="24" cy="15" r="3" fill="white" />
+        </svg>
+        <span class="sb-brand" v-show="!collapsed">AttendEase</span>
+      </div>
+      <button class="collapse-btn" @click="collapsed = !collapsed" :title="collapsed ? 'Expand' : 'Collapse'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path v-if="!collapsed" d="M15 18l-6-6 6-6" />
+          <path v-else d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sb-nav">
+
+      <!-- ── Student Section ──────────────────────────────────── -->
+      <div class="sb-section">
+        <div class="sb-section-label" v-show="!collapsed">Student</div>
+        <div class="sb-divider" v-show="collapsed"></div>
+
+        <router-link v-for="item in studentNav" :key="item.to"
+          :to="item.to" class="sb-item" :title="collapsed ? item.label : ''"
+          active-class="active">
+          <span class="sb-icon" v-html="item.icon"></span>
+          <span class="sb-label" v-show="!collapsed">{{ item.label }}</span>
+        </router-link>
+      </div>
+
+      <!-- ── Employee Section ─────────────────────────────────── -->
+      <div class="sb-section">
+        <div class="sb-section-label" v-show="!collapsed">Employee</div>
+        <div class="sb-divider" v-show="collapsed"></div>
+
+        <router-link v-for="item in employeeNav" :key="item.to"
+          :to="item.to" class="sb-item" :title="collapsed ? item.label : ''"
+          active-class="active">
+          <span class="sb-icon" v-html="item.icon"></span>
+          <span class="sb-label" v-show="!collapsed">{{ item.label }}</span>
+        </router-link>
+      </div>
+
+    </nav>
+
+    <!-- Footer / User info -->
+    <div class="sb-footer">
+      <!-- Expanded: user card + logout row -->
+      <div class="sb-user" v-show="!collapsed">
+        <div class="sb-avatar">A</div>
+        <div class="sb-user-info">
+          <span class="sb-user-name">Admin</span>
+          <span class="sb-user-role">Administrator</span>
+        </div>
+        <button class="logout-btn" @click="logout" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Collapsed: avatar + logout icon stacked -->
+      <div class="collapsed-footer" v-show="collapsed">
+        <div class="sb-avatar centered">A</div>
+        <button class="logout-btn-collapsed" @click="logout" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </aside>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const collapsed = ref(false)
+
+function logout() {
+  authStore.logout()
+  router.push('/')
+}
+
+const studentNav = [
+  {
+    label: 'Home',
+    to: '/app/home',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  },
+  {
+    label: 'Add Student',
+    to: '/app/students/add',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>`,
+  },
+  {
+    label: 'Edit Student',
+    to: '/app/students/edit',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+  },
+  {
+    label: 'Student List',
+    to: '/app/students/list',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  },
+]
+
+const employeeNav = [
+  {
+    label: 'Employee List',
+    to: '/app/employees/list',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  },
+  {
+    label: 'Add Employee',
+    to: '/app/employees/add',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>`,
+  },
+  {
+    label: 'Edit Employee',
+    to: '/app/employees/edit',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+  },
+]
+</script>
+
+<style scoped>
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: 64px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 14px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sb-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.sb-brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.collapse-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  padding: 5px;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.collapse-btn:hover {
+  background: #f9fafb;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+/* ── Navigation ────────────────────────────────────────────────────────── */
+.sb-nav {
+  flex: 1;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+
+.sb-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 10px 10px 4px;
+  white-space: nowrap;
+}
+
+.sb-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 8px 4px;
+}
+
+/* ── Nav item ──────────────────────────────────────────────────────────── */
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  text-decoration: none;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sb-item:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.sb-item.active {
+  background: rgba(124, 58, 237, 0.08); /* subtle accent */
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.sb-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.sb-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+.sb-footer {
+  padding: 12px 10px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sb-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  background: #f4f2fa;
+}
+
+.sb-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #aa3bff, #7c3aed);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sb-avatar.centered {
+  margin: 0 auto;
+}
+
+.sb-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sb-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a0a3a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-user-role {
+  font-size: 11.5px;
+  color: #9b93a5;
+  white-space: nowrap;
+}
+
+/* Logout button — expanded mode */
+.logout-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #b0a8be;
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.logout-btn:hover {
+  color: #e53e3e;
+  background: rgba(229, 62, 62, 0.08);
+}
+
+/* Collapsed footer stack */
+.collapsed-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Logout button — collapsed mode */
+.logout-btn-collapsed {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #b0a8be;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.logout-btn-collapsed:hover {
+  color: #e53e3e;
+  background: rgba(229, 62, 62, 0.08);
+}
+</style>
