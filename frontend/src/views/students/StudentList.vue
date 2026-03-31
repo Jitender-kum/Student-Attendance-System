@@ -46,16 +46,18 @@
               <th>#</th>
               <th>Name</th>
               <th>Roll No.</th>
-              <th>Class</th>
-              <th>Gender</th>
+              <th>Department</th>
+              <th>Course</th>
+              <th>Year</th>
               <th>Phone</th>
               <th>Email</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="filtered.length === 0">
-              <td colspan="8" class="empty-row">
+              <td colspan="10" class="empty-row">
                 <div class="empty-state">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d0ccd8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <span>No students found</span>
@@ -66,19 +68,24 @@
               <td class="col-num">{{ i + 1 }}</td>
               <td class="col-name">
                 <div class="student-name-cell">
-                  <div class="avatar-sm">{{ s.firstName[0] }}{{ s.lastName[0] }}</div>
+                  <div class="avatar-sm">{{ initials(s.name) }}</div>
                   <div>
-                    <div class="name-text">{{ s.firstName }} {{ s.lastName }}</div>
+                    <div class="name-text">{{ s.name }}</div>
+                    <div class="sub-text">{{ s.address }}</div>
                   </div>
                 </div>
               </td>
-              <td><span class="badge-roll">{{ s.roll }}</span></td>
-              <td>{{ s.classSection }}</td>
-              <td>
-                <span class="badge-gender" :class="s.gender === 'Female' ? 'female' : 'male'">{{ s.gender }}</span>
-              </td>
-              <td>{{ s.phone }}</td>
+              <td><span class="badge-roll">{{ s.rollNo }}</span></td>
+              <td>{{ s.department }}</td>
+              <td><span class="badge-course">{{ s.course }}</span></td>
+              <td><span class="badge-year">Year {{ s.year }}</span></td>
+              <td>{{ s.phoneNumber }}</td>
               <td class="col-email">{{ s.email }}</td>
+              <td>
+                <span class="badge-status" :class="s.status ? 'active' : 'inactive'">
+                  {{ s.status ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
               <td class="col-actions">
                 <button class="action-btn edit" @click="openModal(s)" title="Edit">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
@@ -107,47 +114,68 @@
 
           <form class="modal-form" @submit.prevent="saveStudent">
             <div class="form-row">
-              <div class="field" :class="{ error: err.firstName }">
-                <label>First Name</label>
-                <input v-model="form.firstName" type="text" placeholder="e.g. Aarav" />
-                <span class="err-msg" v-if="err.firstName">{{ err.firstName }}</span>
+              <div class="field" :class="{ error: err.name }">
+                <label>Full Name</label>
+                <input v-model="form.name" type="text" placeholder="e.g. Rahul Sharma" />
+                <span class="err-msg" v-if="err.name">{{ err.name }}</span>
               </div>
-              <div class="field" :class="{ error: err.lastName }">
-                <label>Last Name</label>
-                <input v-model="form.lastName" type="text" placeholder="e.g. Sharma" />
-                <span class="err-msg" v-if="err.lastName">{{ err.lastName }}</span>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field" :class="{ error: err.roll }">
+              <div class="field" :class="{ error: err.rollNo }">
                 <label>Roll Number</label>
-                <input v-model="form.roll" type="text" placeholder="e.g. S011" />
-                <span class="err-msg" v-if="err.roll">{{ err.roll }}</span>
+                <input v-model="form.rollNo" type="text" placeholder="e.g. CS101" />
+                <span class="err-msg" v-if="err.rollNo">{{ err.rollNo }}</span>
               </div>
-              <div class="field" :class="{ error: err.classSection }">
-                <label>Class / Section</label>
-                <input v-model="form.classSection" type="text" placeholder="e.g. 10-A" />
-                <span class="err-msg" v-if="err.classSection">{{ err.classSection }}</span>
+            </div>
+            <div class="form-row">
+              <div class="field" :class="{ error: err.department }">
+                <label>Department</label>
+                <input v-model="form.department" type="text" placeholder="e.g. Computer Science" />
+                <span class="err-msg" v-if="err.department">{{ err.department }}</span>
+              </div>
+              <div class="field">
+                <label>Course</label>
+                <input v-model="form.course" type="text" placeholder="e.g. BCA" />
               </div>
             </div>
             <div class="form-row">
               <div class="field">
-                <label>Gender</label>
-                <select v-model="form.gender">
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <label>Year</label>
+                <input v-model="form.year" type="number" min="1" max="6" placeholder="1" />
               </div>
               <div class="field">
-                <label>Phone</label>
-                <input v-model="form.phone" type="text" placeholder="10-digit number" />
+                <label>Phone Number</label>
+                <input v-model="form.phoneNumber" type="text" placeholder="10-digit number" />
               </div>
             </div>
-            <div class="field" :class="{ error: err.email }">
-              <label>Email</label>
-              <input v-model="form.email" type="email" placeholder="student@school.edu" />
-              <span class="err-msg" v-if="err.email">{{ err.email }}</span>
+            <div class="form-row">
+              <div class="field" :class="{ error: err.email }">
+                <label>Email</label>
+                <input v-model="form.email" type="email" placeholder="student@example.com" />
+                <span class="err-msg" v-if="err.email">{{ err.email }}</span>
+              </div>
+              <div class="field">
+                <label>Address</label>
+                <input v-model="form.address" type="text" placeholder="City / Address" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Father's Name</label>
+                <input v-model="form.fatherName" type="text" />
+              </div>
+              <div class="field">
+                <label>Father's Phone</label>
+                <input v-model="form.fatherPhone" type="text" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Mother's Name</label>
+                <input v-model="form.motherName" type="text" />
+              </div>
+              <div class="field">
+                <label>Mother's Phone</label>
+                <input v-model="form.motherPhone" type="text" />
+              </div>
             </div>
 
             <div class="modal-actions">
@@ -171,7 +199,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <p class="confirm-msg">Are you sure you want to delete <strong>{{ deleteTarget?.firstName }} {{ deleteTarget?.lastName }}</strong>? This action cannot be undone.</p>
+          <p class="confirm-msg">Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>? This action cannot be undone.</p>
           <div class="modal-actions">
             <button class="btn-danger" @click="doDelete">Yes, Delete</button>
             <button class="btn-secondary" @click="deleteTarget = null">Cancel</button>
@@ -192,57 +220,61 @@ const store = useStudentStore()
 // Fetch students from backend on page load
 onMounted(() => store.fetchStudents())
 
+// Avatar initials helper
+function initials(name = '') {
+  const p = name.trim().split(' ')
+  return (p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')
+}
+
 // ── Search ─────────────────────────────────────────────────────────────────
 const search = ref('')
 const filtered = computed(() => {
   const q = search.value.toLowerCase()
   if (!q) return store.students
   return store.students.filter(s =>
-    `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-    s.roll.toLowerCase().includes(q) ||
-    s.classSection.toLowerCase().includes(q)
+    (s.name       || '').toLowerCase().includes(q) ||
+    (s.rollNo     || '').toLowerCase().includes(q) ||
+    (s.department || '').toLowerCase().includes(q) ||
+    (s.course     || '').toLowerCase().includes(q)
   )
 })
 
 // ── Modal state ─────────────────────────────────────────────────────────────
-const showModal = ref(false)
+const showModal      = ref(false)
 const editingStudent = ref(null)
 
-const emptyForm = () => ({ firstName: '', lastName: '', roll: '', classSection: '', gender: 'Male', phone: '', email: '' })
+const emptyForm = () => ({
+  name: '', rollNo: '', department: '', course: '', year: 1,
+  phoneNumber: '', email: '', address: '',
+  fatherName: '', fatherPhone: '', fatherOccupation: '',
+  motherName: '', motherPhone: '',
+})
 const form = reactive(emptyForm())
-const err  = reactive({ firstName: '', lastName: '', roll: '', classSection: '', email: '' })
+const err  = reactive({ name: '', rollNo: '', department: '', email: '' })
 
 function openModal(student = null) {
   editingStudent.value = student
-  Object.assign(err, { firstName: '', lastName: '', roll: '', classSection: '', email: '' })
-  if (student) {
-    Object.assign(form, { ...student })
-  } else {
-    Object.assign(form, emptyForm())
-  }
+  Object.assign(err, { name: '', rollNo: '', department: '', email: '' })
+  Object.assign(form, student ? { ...student } : emptyForm())
   showModal.value = true
 }
 
 function closeModal() { showModal.value = false }
 
 function validate() {
-  let ok = true
-  err.firstName = form.firstName.trim() ? '' : 'First name is required.'
-  err.lastName  = form.lastName.trim()  ? '' : 'Last name is required.'
-  err.roll      = form.roll.trim()      ? '' : 'Roll number is required.'
-  err.classSection = form.classSection.trim() ? '' : 'Class is required.'
-  err.email     = form.email.trim()     ? '' : 'Email is required.'
-  ok = !Object.values(err).some(Boolean)
-  return ok
+  err.name       = form.name.trim()       ? '' : 'Name is required.'
+  err.rollNo     = form.rollNo.trim()     ? '' : 'Roll number is required.'
+  err.department = form.department.trim() ? '' : 'Department is required.'
+  err.email      = form.email.trim()      ? '' : 'Email is required.'
+  return !Object.values(err).some(Boolean)
 }
 
 function saveStudent() {
   if (!validate()) return
-  const data = { ...form }
   if (editingStudent.value) {
-    store.updateStudent(editingStudent.value.id, data)
+    store.updateStudent(editingStudent.value.id, { ...form })
   } else {
-    store.addStudent(data)
+    store.addStudent({ ...form })
   }
   closeModal()
 }
@@ -379,6 +411,7 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   display: grid; place-items: center; flex-shrink: 0;
 }
 .name-text { font-weight: 600; color: #111827; font-size: 13.5px; }
+.sub-text   { font-size: 11.5px; color: #9ca3af; margin-top: 1px; }
 
 /* ── Badges ─────────────────────────────────────────────────────── */
 .badge-roll {
@@ -387,12 +420,24 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   padding: 3px 9px; border-radius: 6px;
 }
 
-.badge-gender {
-  font-size: 11.5px; font-weight: 600;
+.badge-course {
+  background: #ede9fe; color: #7c3aed;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 9px; border-radius: 6px;
+}
+
+.badge-year {
+  background: #dbeafe; color: #1d4ed8;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 9px; border-radius: 6px;
+}
+
+.badge-status {
+  font-size: 11.5px; font-weight: 700;
   padding: 3px 10px; border-radius: 99px;
 }
-.badge-gender.male   { background: #eff6ff; color: #3b82f6; }
-.badge-gender.female { background: #fdf2f8; color: #ec4899; }
+.badge-status.active   { background: #d1fae5; color: #059669; }
+.badge-status.inactive { background: #fee2e2; color: #dc2626; }
 
 /* ── Action buttons ─────────────────────────────────────────────── */
 .action-btn {
