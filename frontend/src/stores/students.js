@@ -1,34 +1,74 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { API } from '../config/api'
+
+/**
+ * Backend API fields (stored as-is, no mapping):
+ *  id, name, rollNo, department, course, year,
+ *  phoneNumber, email, address,
+ *  fatherName, fatherPhone, fatherOccupation,
+ *  motherName, motherPhone,
+ *  attendancePercentage, status,
+ *  createdOn, updatedOn, createdBy, updatedBy
+ *
+ * Convenience getters used in templates:
+ *  s.firstName  →  first word of s.name
+ *  s.lastName   →  rest of s.name
+ *  s.roll       →  s.rollNo
+ *  s.phone      →  s.phoneNumber
+ *  s.classSection → s.department + ' Y' + s.year
+ */
+function addConvenienceFields(raw) {
+  const parts     = (raw.name || '').trim().split(' ')
+  return {
+    ...raw,
+    // shorthand aliases so existing templates keep working
+    firstName:    parts[0]               || '',
+    lastName:     parts.slice(1).join(' ')|| '',
+    roll:         raw.rollNo             || '',
+    phone:        raw.phoneNumber        || '',
+    classSection: raw.department
+      ? `${raw.department}${raw.year ? ' Y' + raw.year : ''}`
+      : (raw.course || ''),
+    gender:       raw.gender             || '',
+  }
+}
 
 export const useStudentStore = defineStore('students', () => {
-  const students = ref([
-    { id: 1, firstName: 'Aarav',   lastName: 'Sharma',   roll: 'S001', classSection: '10-A', email: 'aarav.sharma@school.edu',   phone: '9876543210', gender: 'Male' },
-    { id: 2, firstName: 'Priya',   lastName: 'Patel',    roll: 'S002', classSection: '10-A', email: 'priya.patel@school.edu',    phone: '9876543211', gender: 'Female' },
-    { id: 3, firstName: 'Rohan',   lastName: 'Mehta',    roll: 'S003', classSection: '10-B', email: 'rohan.mehta@school.edu',    phone: '9876543212', gender: 'Male' },
-    { id: 4, firstName: 'Sneha',   lastName: 'Verma',    roll: 'S004', classSection: '10-B', email: 'sneha.verma@school.edu',    phone: '9876543213', gender: 'Female' },
-    { id: 5, firstName: 'Karan',   lastName: 'Gupta',    roll: 'S005', classSection: '11-A', email: 'karan.gupta@school.edu',    phone: '9876543214', gender: 'Male' },
-    { id: 6, firstName: 'Anjali',  lastName: 'Singh',    roll: 'S006', classSection: '11-A', email: 'anjali.singh@school.edu',   phone: '9876543215', gender: 'Female' },
-    { id: 7, firstName: 'Vikram',  lastName: 'Reddy',    roll: 'S007', classSection: '11-B', email: 'vikram.reddy@school.edu',   phone: '9876543216', gender: 'Male' },
-    { id: 8, firstName: 'Neha',    lastName: 'Joshi',    roll: 'S008', classSection: '11-B', email: 'neha.joshi@school.edu',     phone: '9876543217', gender: 'Female' },
-    { id: 9, firstName: 'Arjun',   lastName: 'Nair',     roll: 'S009', classSection: '12-A', email: 'arjun.nair@school.edu',     phone: '9876543218', gender: 'Male' },
-    { id: 10,firstName: 'Pooja',   lastName: 'Iyer',     roll: 'S010', classSection: '12-A', email: 'pooja.iyer@school.edu',     phone: '9876543219', gender: 'Female' },
-  ])
+  const students = ref([])
+  const loading  = ref(false)
+  const error    = ref(null)
 
-  let nextId = 11
+  /* ── Fetch list from backend ─────────────────────── */
+  async function fetchStudents() {
+    loading.value = true
+    error.value   = null
+    try {
+      const res = await fetch(API.student.list)
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const data = await res.json()
+      students.value = Array.isArray(data) ? data.map(addConvenienceFields) : []
+    } catch (e) {
+      error.value = e.message
+      console.error('[StudentStore] fetchStudents failed:', e)
+    } finally {
+      loading.value = false
+    }
+  }
 
-  function addStudent(data) {
-    students.value.push({ id: nextId++, ...data })
+  /* ── Local CRUD (optimistic, until backend endpoints are wired) ── */
+  function addStudent(s) {
+    students.value.push(addConvenienceFields({ id: Date.now(), ...s }))
   }
 
   function updateStudent(id, data) {
     const idx = students.value.findIndex(s => s.id === id)
-    if (idx !== -1) students.value[idx] = { id, ...data }
+    if (idx !== -1) students.value[idx] = addConvenienceFields({ ...students.value[idx], ...data })
   }
 
   function deleteStudent(id) {
     students.value = students.value.filter(s => s.id !== id)
   }
 
-  return { students, addStudent, updateStudent, deleteStudent }
+  return { students, loading, error, fetchStudents, addStudent, updateStudent, deleteStudent }
 })

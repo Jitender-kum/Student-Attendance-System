@@ -13,6 +13,17 @@
       </button>
     </div>
 
+    <!-- Loading / Error states -->
+    <div v-if="store.loading" class="state-banner loading-banner">
+      <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Loading students from server…
+    </div>
+    <div v-else-if="store.error" class="state-banner error-banner">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Could not reach backend: {{ store.error }}
+      <button class="retry-btn" @click="store.fetchStudents()">Retry</button>
+    </div>
+
     <!-- Table Card -->
     <div class="table-card">
 
@@ -173,10 +184,13 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useStudentStore } from '../../stores/students'
 
 const store = useStudentStore()
+
+// Fetch students from backend on page load
+onMounted(() => store.fetchStudents())
 
 // ── Search ─────────────────────────────────────────────────────────────────
 const search = ref('')
@@ -244,6 +258,34 @@ function doDelete() {
 
 <style scoped>
 .page { padding: 4px 0; }
+
+/* ── Loading / Error banners ─────────────────────────────────────── */
+.state-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.loading-banner {
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8;
+}
+
+.error-banner {
+  background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+}
+
+.retry-btn {
+  margin-left: auto;
+  padding: 5px 14px; font-size: 12.5px; font-weight: 600;
+  border: 1.5px solid #dc2626; border-radius: 7px;
+  background: transparent; color: #dc2626; cursor: pointer;
+  transition: all 0.15s;
+}
+.retry-btn:hover { background: #dc2626; color: #fff; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
 
 /* ── Header ─────────────────────────────────────────────────────── */
 .page-header {

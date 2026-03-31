@@ -36,6 +36,16 @@ const routes = [
         name: 'StudentList',
         component: () => import('../views/students/StudentList.vue'),
       },
+      {
+        path: 'students/attendance',
+        name: 'StudentAttendance',
+        component: () => import('../views/students/StudentAttendance.vue'),
+      },
+      {
+        path: 'students/report',
+        name: 'AttendanceReport',
+        component: () => import('../views/students/AttendanceReport.vue'),
+      },
 
       // Employee
       {
