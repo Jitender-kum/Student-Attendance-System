@@ -178,11 +178,18 @@
               </div>
             </div>
 
+            <!-- API error banner -->
+            <div class="api-error" v-if="apiError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {{ apiError }}
+            </div>
+
             <div class="modal-actions">
-              <button type="submit" class="btn-primary">
-                {{ editingStudent ? 'Save Changes' : 'Add Student' }}
+              <button type="submit" class="btn-primary" :disabled="saving">
+                <svg v-if="saving" class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                {{ saving ? 'Saving…' : (editingStudent ? 'Save Changes' : 'Add Student') }}
               </button>
-              <button type="button" class="btn-secondary" @click="closeModal">Cancel</button>
+              <button type="button" class="btn-secondary" @click="closeModal" :disabled="saving">Cancel</button>
             </div>
           </form>
         </div>
@@ -242,6 +249,8 @@ const filtered = computed(() => {
 // ── Modal state ─────────────────────────────────────────────────────────────
 const showModal      = ref(false)
 const editingStudent = ref(null)
+const saving         = ref(false)
+const apiError       = ref('')
 
 const emptyForm = () => ({
   name: '', rollNo: '', department: '', course: '', year: 1,
@@ -254,12 +263,16 @@ const err  = reactive({ name: '', rollNo: '', department: '', email: '' })
 
 function openModal(student = null) {
   editingStudent.value = student
+  apiError.value = ''
   Object.assign(err, { name: '', rollNo: '', department: '', email: '' })
   Object.assign(form, student ? { ...student } : emptyForm())
   showModal.value = true
 }
 
-function closeModal() { showModal.value = false }
+function closeModal() {
+  if (saving.value) return   // don't close while request in flight
+  showModal.value = false
+}
 
 function validate() {
   err.name       = form.name.trim()       ? '' : 'Name is required.'
@@ -269,14 +282,25 @@ function validate() {
   return !Object.values(err).some(Boolean)
 }
 
-function saveStudent() {
+async function saveStudent() {
   if (!validate()) return
+  saving.value   = true
+  apiError.value = ''
+
+  let result
   if (editingStudent.value) {
-    store.updateStudent(editingStudent.value.id, { ...form })
+    result = await store.updateStudent(editingStudent.value.id, { ...form })
   } else {
-    store.addStudent({ ...form })
+    result = await store.addStudent({ ...form })
   }
-  closeModal()
+
+  saving.value = false
+
+  if (result?.success === false) {
+    apiError.value = result.error || 'Something went wrong. Please try again.'
+  } else {
+    closeModal()
+  }
 }
 
 // ── Delete ──────────────────────────────────────────────────────────────────
@@ -521,17 +545,27 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
 
 .confirm-msg { padding: 16px 24px; font-size: 14px; color: #374151; line-height: 1.6; margin: 0; }
 
+.api-error {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 9px;
+  background: #fef2f2; border: 1px solid #fecaca;
+  color: #dc2626; font-size: 12.5px; font-weight: 500;
+  margin: 0 0 4px;
+}
+
 .modal-actions {
   display: flex; gap: 10px; padding: 0 24px 20px;
 }
 
 .btn-primary {
+  display: inline-flex; align-items: center; gap: 7px;
   padding: 9px 22px; background: #7c3aed;
   color: white; font-size: 13.5px; font-weight: 600;
   border: none; border-radius: 9px; cursor: pointer;
   transition: background 0.15s; font-family: inherit;
 }
-.btn-primary:hover { background: #6d28d9; }
+.btn-primary:hover:not(:disabled) { background: #6d28d9; }
+.btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .btn-secondary {
   padding: 9px 18px; background: white; color: #374151;

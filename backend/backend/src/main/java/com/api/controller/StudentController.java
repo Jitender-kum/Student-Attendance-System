@@ -2,9 +2,7 @@ package com.api.controller;
 
 import com.api.model.Student;
 import com.api.service.StudentService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -23,4 +21,24 @@ public class StudentController {
         return studentService.getStudentList();
     }
 
+//    @GetMapping("/{id}")
+//    public Student getStudentById(@PathVariable int id) {
+//        return studentService.getStudentById(id);
+//    }
+
+    @PostMapping("/add")
+    public Student addStudent(@RequestBody Student student) {
+        return studentService.saveStudent(student);
+    }
+
+    @PostMapping("/update")
+    public Student updateStudent(@RequestBody Student student) {
+        return studentService.updateStudent(student);
+    }
+
+//    @DeleteMapping("/delete/{id}")
+//    public String deleteStudent(@PathVariable int id) {
+//        studentService.deleteStudent(id);
+//        return "Deleted Successfully";
+//    }
 }

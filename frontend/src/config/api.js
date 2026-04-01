@@ -6,6 +6,12 @@
  *
  * To change the backend port: update BACKEND_PORT in vite.config.js
  * (the proxy target) — no other file needs to change.
+ *
+ * Backend controller: @RequestMapping("/student")
+ *   POST /student/add     → @RequestBody Student
+ *   POST /student/update  → @RequestBody Student  (id included in body)
+ *   GET  /student/list
+ *   DELETE /student/delete/{id}  (if applicable)
  */
 export const API_PREFIX = '/api'
 
@@ -13,7 +19,7 @@ export const API = {
   student: {
     list:   `${API_PREFIX}/student/list`,
     add:    `${API_PREFIX}/student/add`,
-    update: (id) => `${API_PREFIX}/student/update/${id}`,
+    update: `${API_PREFIX}/student/update`,
     delete: (id) => `${API_PREFIX}/student/delete/${id}`,
   },
 }

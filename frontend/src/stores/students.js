@@ -56,14 +56,48 @@ export const useStudentStore = defineStore('students', () => {
     }
   }
 
-  /* ── Local CRUD (optimistic, until backend endpoints are wired) ── */
-  function addStudent(s) {
-    students.value.push(addConvenienceFields({ id: Date.now(), ...s }))
+  /* ── POST full Student entity to /student/add ─────── */
+  async function addStudent(studentData) {
+    try {
+      const res = await fetch(API.student.add, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const saved = await res.json()
+      // Push the returned (persisted) entity into the list
+      students.value.push(addConvenienceFields(saved))
+      return { success: true }
+    } catch (e) {
+      console.error('[StudentStore] addStudent failed:', e)
+      return { success: false, error: e.message }
+    }
   }
 
-  function updateStudent(id, data) {
-    const idx = students.value.findIndex(s => s.id === id)
-    if (idx !== -1) students.value[idx] = addConvenienceFields({ ...students.value[idx], ...data })
+  /* ── POST full Student entity to /student/update ──── */
+  /* id is included inside the entity body — backend expects the whole object */
+  async function updateStudent(id, data) {
+    try {
+      // Merge with existing record so no field is accidentally lost
+      const existing = students.value.find(s => s.id === id) || {}
+      const payload  = { ...existing, ...data, id }
+
+      const res = await fetch(API.student.update, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const saved = await res.json()
+      // Replace the record in the local list with what the server returned
+      const idx = students.value.findIndex(s => s.id === id)
+      if (idx !== -1) students.value[idx] = addConvenienceFields(saved)
+      return { success: true }
+    } catch (e) {
+      console.error('[StudentStore] updateStudent failed:', e)
+      return { success: false, error: e.message }
+    }
   }
 
   function deleteStudent(id) {
