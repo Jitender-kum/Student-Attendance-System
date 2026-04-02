@@ -20,22 +20,42 @@
 </template>
 
 <script setup>
-const stats = [
+import { onMounted, computed } from 'vue'
+import { useStudentStore } from '../stores/students'
+import { useAttendanceStore } from '../stores/attendance'
+
+const studentStore = useStudentStore()
+const attStore = useAttendanceStore()
+
+const today = new Date().toISOString().split('T')[0]
+
+onMounted(async () => {
+  // Fetch students first
+  await studentStore.fetchStudents()
+  // Fetch today's attendance
+  await attStore.fetchByDate(today)
+})
+
+const summary = computed(() => {
+  return attStore.getDateSummary(today, studentStore.students)
+})
+
+const stats = computed(() => [
   {
     label: 'Total Students',
-    value: '0',
+    value: summary.value.total,
     color: 'rgba(170,59,255,0.12)',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aa3bff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   },
   {
     label: 'Present Today',
-    value: '0',
+    value: summary.value.present,
     color: 'rgba(16,185,129,0.12)',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`,
   },
   {
     label: 'Absent Today',
-    value: '0',
+    value: summary.value.absent,
     color: 'rgba(239,68,68,0.12)',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   },
@@ -45,7 +65,7 @@ const stats = [
     color: 'rgba(59,130,246,0.12)',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>`,
   },
-]
+])
 </script>
 
 <style scoped>

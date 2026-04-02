@@ -821,9 +821,15 @@ function showToast(msg, type = 'success') {
 .halfday-btn:hover { background: #db2777; color: #fff; box-shadow: 0 4px 10px rgba(219, 39, 119, 0.3); }
 .halfday-btn.active { background: #db2777; color: #fff; box-shadow: 0 4px 10px rgba(219, 39, 119, 0.3); }
 
+/* Absent */
+.absent-btn { border-color: #fee2e2; color: #dc2626; background: #fee2e2; }
+.absent-btn:hover { background: #dc2626; color: #fff; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3); }
+.absent-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3); }
+
 /* Row color tints */
 .student-row.present { background: rgba(16, 185, 129, 0.04); }
-.student-row.absent { background: rgba(239, 68, 68, 0.04); }
+.student-row.absent { background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; }
+.student-row.absent:hover { background: rgba(239, 68, 68, 0.12); }
 .student-row.late { background: rgba(245, 158, 11, 0.04); }
 .student-row.leave { background: rgba(79, 70, 229, 0.04); }
 .student-row.halfday { background: rgba(219, 39, 119, 0.04); }
