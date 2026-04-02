@@ -201,11 +201,16 @@ export const useAttendanceStore = defineStore('attendance', () => {
       return dow !== 0
     })
     const marked = schoolDays.filter(d => d.status !== null)
-    const present = marked.filter(d => d.status === 'present').length
-    const absent  = marked.filter(d => d.status === 'absent').length
+    let present = marked.filter(d => d.status === 'present').length
+    let absent  = marked.filter(d => d.status === 'absent').length
     const late    = marked.filter(d => d.status === 'late').length
+    const halfday = marked.filter(d => d.status === 'halfday').length
+    
+    present += halfday * 0.5
+    absent += halfday * 0.5
+
     const pct = marked.length ? Math.round(((present + late) / marked.length) * 100) : null
-    return { present, absent, late, marked: marked.length, schoolDays: schoolDays.length, pct }
+    return { present, absent, late, halfday, marked: marked.length, schoolDays: schoolDays.length, pct }
   }
 
   /* ─── all dates that have records ───────────────── */
@@ -213,17 +218,22 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   /* ─── all-time totals for a single student ───────── */
   function getStudentTotals(studentId) {
-    let present = 0, absent = 0, late = 0
+    let present = 0, absent = 0, late = 0, halfday = 0
     for (const date of Object.keys(attendance.value)) {
       const st = attendance.value[date]?.[studentId]
       if (st === 'present') present++
       else if (st === 'absent') absent++
       else if (st === 'late') late++
+      else if (st === 'halfday') halfday++
     }
-    const total    = present + absent + late
-    const attended = present + late          // present or late = "attended"
+    
+    const totalPresent = present + (halfday * 0.5)
+    const totalAbsent = absent + (halfday * 0.5)
+    const total    = present + absent + late + halfday
+
+    const attended = totalPresent + late          // present or late = "attended"
     const pct      = total ? Math.round((attended / total) * 100) : null
-    return { present, absent, late, total, attended, pct }
+    return { present: totalPresent, absent: totalAbsent, late, halfday, total, attended, pct }
   }
 
   /* ─── all-time totals for every student ──────────── */
