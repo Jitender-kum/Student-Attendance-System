@@ -47,22 +47,7 @@ const routes = [
         component: () => import('../views/students/AttendanceReport.vue'),
       },
 
-      // Employee
-      {
-        path: 'employees/list',
-        name: 'EmployeeList',
-        component: () => import('../views/employees/EmployeeList.vue'),
-      },
-      {
-        path: 'employees/add',
-        name: 'AddEmployee',
-        component: () => import('../views/employees/EmployeeList.vue'),
-      },
-      {
-        path: 'employees/edit',
-        name: 'EditEmployee',
-        component: () => import('../views/employees/EmployeeList.vue'),
-      },
+
     ],
   },
 ]

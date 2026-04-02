@@ -59,12 +59,7 @@ const stats = computed(() => [
     color: 'rgba(239,68,68,0.12)',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   },
-  {
-    label: 'Total Employees',
-    value: '0',
-    color: 'rgba(59,130,246,0.12)',
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>`,
-  },
+
 ])
 </script>
 

@@ -36,18 +36,7 @@
         </router-link>
       </div>
 
-      <!-- ── Employee Section ─────────────────────────────────── -->
-      <div class="sb-section">
-        <div class="sb-section-label" v-show="!collapsed">Employee</div>
-        <div class="sb-divider" v-show="collapsed"></div>
 
-        <router-link v-for="item in employeeNav" :key="item.to"
-          :to="item.to" class="sb-item" :title="collapsed ? item.label : ''"
-          active-class="active">
-          <span class="sb-icon" v-html="item.icon"></span>
-          <span class="sb-label" v-show="!collapsed">{{ item.label }}</span>
-        </router-link>
-      </div>
 
     </nav>
 
@@ -122,23 +111,7 @@ const studentNav = [
   },
 ]
 
-const employeeNav = [
-  {
-    label: 'Employee List',
-    to: '/app/employees/list',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-  },
-  {
-    label: 'Add Employee',
-    to: '/app/employees/add',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>`,
-  },
-  {
-    label: 'Edit Employee',
-    to: '/app/employees/edit',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
-  },
-]
+
 </script>
 
 <style scoped>
