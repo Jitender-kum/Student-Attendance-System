@@ -147,10 +147,18 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="filteredStudents.length === 0">
+            <tr v-if="attStore.loading">
+              <td colspan="6" class="empty-row">
+                <div class="loader-wrap">
+                  <div class="loader"></div>
+                  <span>Loading attendance data...</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="filteredStudents.length === 0">
               <td colspan="6" class="empty-row">No students found for this class.</td>
             </tr>
-            <tr v-for="(student, idx) in filteredStudents" :key="student.id"
+            <tr v-else v-for="(student, idx) in filteredStudents" :key="student.id"
               class="student-row" :class="getStatus(student.id)">
               <td class="td-no">{{ idx + 1 }}</td>
               <td class="td-roll">
@@ -234,13 +242,22 @@ import { useAttendanceStore } from '../../stores/attendance'
 const studentStore = useStudentStore()
 const attStore     = useAttendanceStore()
 
-// Always load live student data from backend
-onMounted(() => studentStore.fetchStudents())
+// Always load live data from backend for selected date
+onMounted(async () => {
+  const list = await attStore.fetchByDate(selectedDate.value)
+  if (list) studentStore.students = list
+})
 
 /* ── Date & Class filter ───────────── */
 const today = new Date().toISOString().split('T')[0]
 const selectedDate = ref(today)
 const selectedClass = ref('all')
+
+// Fetch attendance when date changes
+watch(selectedDate, async (newDate) => {
+  const list = await attStore.fetchByDate(newDate)
+  if (list) studentStore.students = list
+})
 
 const classes = computed(() => {
   const s = new Set(studentStore.students.map(s => s.classSection))
@@ -723,6 +740,27 @@ function showToast(msg, type = 'success') {
   padding: 40px;
   color: #9ca3af;
   font-size: 14px;
+}
+
+.loader-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+
+.loader {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #f3f4f6;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ── Toast ───────────────────────────────────────────────────────────── */

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { API } from '../config/api'
 
 const STORAGE_KEY = 'attendease_attendance'
 
@@ -15,6 +16,56 @@ function loadFromStorage() {
 export const useAttendanceStore = defineStore('attendance', () => {
   // attendance[date][studentId] = 'present' | 'absent' | 'late' | null
   const attendance = ref(loadFromStorage())
+  const loading = ref(false)
+  const error = ref(null)
+
+  async function fetchByDate(date) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await fetch(API.attendance.getByDate(date))
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const data = await res.json()
+      
+      // Update local storage/state with fetched data
+      if (!attendance.value[date]) attendance.value[date] = {}
+      
+      const studentsList = []
+      data.forEach(item => {
+        // Map convenience fields (copied logic from studentStore)
+        const parts = (item.name || '').trim().split(' ')
+        const mapped = {
+          ...item,
+          firstName:    parts[0]               || '',
+          lastName:     parts.slice(1).join(' ')|| '',
+          roll:         item.rollNo            || '',
+          phone:        item.phoneNumber       || '',
+          classSection: item.department
+            ? `${item.department}${item.year ? ' Y' + item.year : ''}`
+            : (item.course || ''),
+          gender:       item.gender             || '',
+        }
+        studentsList.push(mapped)
+
+        if (item.studentAttendance && item.studentAttendance.attendanceStatus) {
+          const status = item.studentAttendance.attendanceStatus.toLowerCase()
+          attendance.value[date][item.id] = status
+        } else {
+          // If null, it means attendance not yet done for this student
+          attendance.value[date][item.id] = null
+        }
+      })
+      
+      // Trigger reactivity
+      attendance.value = { ...attendance.value }
+      return studentsList
+    } catch (e) {
+      error.value = e.message
+      console.error('[AttendanceStore] fetchByDate failed:', e)
+    } finally {
+      loading.value = false
+    }
+  }
 
   // Auto-save to localStorage on every change
   watch(attendance, (val) => {
@@ -116,9 +167,12 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   return {
     attendance,
+    loading,
+    error,
     getRecord,
     markAttendance,
     markAll,
+    fetchByDate,
     getDateSummary,
     getMonthlyReport,
     getMonthlyStats,

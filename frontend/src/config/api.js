@@ -22,4 +22,8 @@ export const API = {
     update: `${API_PREFIX}/student/update`,
     delete: (id) => `${API_PREFIX}/student/delete/${id}`,
   },
+  attendance: {
+    getByDate: (date) => `${API_PREFIX}/attendance/get_student_attendance?date=${date}`,
+    mark:      `${API_PREFIX}/attendance/mark`,
+  },
 }
