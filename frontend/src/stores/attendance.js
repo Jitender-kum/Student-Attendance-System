@@ -14,8 +14,10 @@ function loadFromStorage() {
 }
 
 export const useAttendanceStore = defineStore('attendance', () => {
-  // attendance[date][studentId] = 'present' | 'absent' | 'late' | null
+  // attendance[date][studentId] = 'present' | 'absent' | 'late' | 'leave' | 'halfday' | null
   const attendance = ref(loadFromStorage())
+  // attendanceMeta[date][studentId] = { id, createdBy }
+  const attendanceMeta = ref({})
   const loading = ref(false)
   const error = ref(null)
 
@@ -29,6 +31,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
       
       // Update local storage/state with fetched data
       if (!attendance.value[date]) attendance.value[date] = {}
+      if (!attendanceMeta.value[date]) attendanceMeta.value[date] = {}
       
       const studentsList = []
       data.forEach(item => {
@@ -48,16 +51,25 @@ export const useAttendanceStore = defineStore('attendance', () => {
         studentsList.push(mapped)
 
         if (item.studentAttendance && item.studentAttendance.attendanceStatus) {
-          const status = item.studentAttendance.attendanceStatus.toLowerCase()
-          attendance.value[date][item.id] = status
+          const status = item.studentAttendance.attendanceStatus.toLowerCase().replace('_', '')
+          // Backend might have HALF_DAY, frontend uses halfday
+          const uiStatus = status === 'halfday' ? 'halfday' : status
+          
+          attendance.value[date][item.id] = uiStatus
+          attendanceMeta.value[date][item.id] = {
+            id: item.studentAttendance.id,
+            createdBy: item.studentAttendance.createdBy || 'admin'
+          }
         } else {
           // If null, it means attendance not yet done for this student
           attendance.value[date][item.id] = null
+          attendanceMeta.value[date][item.id] = null
         }
       })
       
       // Trigger reactivity
       attendance.value = { ...attendance.value }
+      attendanceMeta.value = { ...attendanceMeta.value }
       return studentsList
     } catch (e) {
       error.value = e.message
@@ -77,40 +89,94 @@ export const useAttendanceStore = defineStore('attendance', () => {
     return attendance.value[date]?.[studentId] ?? null
   }
 
-  /* ─── mark one student ──────────────────────────── */
-  function markAttendance(date, studentId, status) {
+  /* ─── mark one student (sync with API) ──────────── */
+  async function markAttendance(date, studentId, status) {
+    const statusMap = {
+      present: 'PRESENT',
+      absent:  'ABSENT',
+      leave:   'LEAVE',
+      halfday: 'HALF_DAY',
+      late:    'LATE'
+    }
+
+    // Always update local state first for instant feedback (optimistic)
     if (!attendance.value[date]) attendance.value[date] = {}
+    if (!attendanceMeta.value[date]) attendanceMeta.value[date] = {}
+
+    const oldStatus = attendance.value[date][studentId]
+    const oldMeta   = attendanceMeta.value[date][studentId]
+    
     if (status === null) {
       delete attendance.value[date][studentId]
+      delete attendanceMeta.value[date][studentId]
     } else {
       attendance.value[date][studentId] = status
     }
-    // trigger reactivity
     attendance.value = { ...attendance.value }
+
+    // Send to backend
+    try {
+      const payload = {
+        studentId: Number(studentId),
+        attendanceDate: date,
+        attendanceStatus: status ? statusMap[status] : 'ABSENT',
+        createdBy: oldMeta?.createdBy || 'admin'
+      }
+      
+      // If we have an existing attendance ID, include it so backend updates instead of creates
+      if (oldMeta?.id) {
+        payload.id = oldMeta.id
+      }
+
+      const res = await fetch(API.attendance.mark, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      
+      // Re-fetch everything and return the students list for caller use
+      return await fetchByDate(date)
+    } catch (e) {
+      console.error('[AttendanceStore] markAttendance failed:', e)
+      // Rollback on error
+      attendance.value[date][studentId] = oldStatus
+      attendanceMeta.value[date][studentId] = oldMeta
+      attendance.value = { ...attendance.value }
+      // Throw or return error object. To maintain the success/error pattern:
+      return { _error: e.message }
+    }
   }
 
   /* ─── bulk mark ─────────────────────────────────── */
-  function markAll(date, studentIds, status) {
-    if (!attendance.value[date]) attendance.value[date] = {}
-    studentIds.forEach(id => {
-      if (status === null) delete attendance.value[date][id]
-      else attendance.value[date][id] = status
-    })
-    attendance.value = { ...attendance.value }
+  async function markAll(date, studentIds, status) {
+    try {
+      // Perform all marks in parallel
+      await Promise.all(studentIds.map(id => markAttendance(date, id, status)))
+      // The markAttendance calls already fetchByDate internally, 
+      // but to be absolutely sure we have the latest and to return it:
+      return await fetchByDate(date)
+    } catch (e) {
+      console.error('[AttendanceStore] markAll failed:', e)
+      return { _error: e.message }
+    }
   }
 
   /* ─── day summary ───────────────────────────────── */
   function getDateSummary(date, students) {
     const record = attendance.value[date] || {}
-    let present = 0, absent = 0, late = 0, unmarked = 0
+    let present = 0, absent = 0, late = 0, leave = 0, halfday = 0, unmarked = 0
     students.forEach(s => {
       const v = record[s.id]
       if (v === 'present') present++
       else if (v === 'absent') absent++
       else if (v === 'late') late++
+      else if (v === 'leave') leave++
+      else if (v === 'halfday') halfday++
       else unmarked++
     })
-    return { present, absent, late, unmarked, total: students.length }
+    return { present, absent, late, leave, halfday, unmarked, total: students.length }
   }
 
   /* ─── monthly report for one student ────────────── */

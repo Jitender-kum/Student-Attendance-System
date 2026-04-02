@@ -75,12 +75,36 @@
       <div class="summary-card late">
         <div class="sc-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            <polyline points="12 6 12 12 16 14"/>
           </svg>
         </div>
         <div>
           <div class="sc-value">{{ summary.late }}</div>
           <div class="sc-label">Late</div>
+        </div>
+      </div>
+
+      <div class="summary-card leave">
+        <div class="sc-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sc-value">{{ summary.leave }}</div>
+          <div class="sc-label">Leave</div>
+        </div>
+      </div>
+
+      <div class="summary-card halfday">
+        <div class="sc-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sc-value">{{ summary.halfday }}</div>
+          <div class="sc-label">Half Day</div>
         </div>
       </div>
 
@@ -102,11 +126,15 @@
       <div class="progress-bar-track">
         <div class="bar-present" :style="{ width: pctPresent + '%' }"></div>
         <div class="bar-late" :style="{ width: pctLate + '%' }"></div>
+        <div class="bar-leave" :style="{ width: pctLeave + '%' }"></div>
+        <div class="bar-halfday" :style="{ width: pctHalfDay + '%' }"></div>
         <div class="bar-absent" :style="{ width: pctAbsent + '%' }"></div>
       </div>
       <div class="progress-legend">
         <span class="leg leg-present">Present {{ pctPresent.toFixed(0) }}%</span>
         <span class="leg leg-late">Late {{ pctLate.toFixed(0) }}%</span>
+        <span class="leg leg-leave">Leave {{ pctLeave.toFixed(0) }}%</span>
+        <span class="leg leg-halfday">Half {{ pctHalfDay.toFixed(0) }}%</span>
         <span class="leg leg-absent">Absent {{ pctAbsent.toFixed(0) }}%</span>
       </div>
     </div>
@@ -122,9 +150,17 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         All Absent
       </button>
+      <button class="bulk-btn bulk-leave" id="bulk-leave" @click="bulkMark('leave')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        All Leave
+      </button>
       <button class="bulk-btn bulk-late" id="bulk-late" @click="bulkMark('late')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         All Late
+      </button>
+      <button class="bulk-btn bulk-halfday" id="bulk-halfday" @click="bulkMark('halfday')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H9"/></svg>
+        All Half
       </button>
       <button class="bulk-btn bulk-clear" id="bulk-clear" @click="bulkMark(null)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.14"/></svg>
@@ -170,7 +206,10 @@
                     {{ student.firstName[0] }}{{ student.lastName[0] }}
                   </div>
                   <div>
-                    <div class="student-name">{{ student.firstName }} {{ student.lastName }}</div>
+                    <div class="student-name">
+                      {{ student.firstName }} {{ student.lastName }}
+                      <span v-if="getStatus(student.id) === 'absent'" class="absent-label">ABSENT</span>
+                    </div>
                     <div class="student-email">{{ student.email }}</div>
                   </div>
                 </div>
@@ -192,18 +231,7 @@
                     @click="mark(student.id, 'present')"
                     title="Mark Present"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Present
-                  </button>
-                  <button
-                    class="status-btn late-btn"
-                    :class="{ active: getStatus(student.id) === 'late' }"
-                    :id="'btn-late-' + student.id"
-                    @click="mark(student.id, 'late')"
-                    title="Mark Late"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Late
+                    Pres
                   </button>
                   <button
                     class="status-btn absent-btn"
@@ -212,8 +240,34 @@
                     @click="mark(student.id, 'absent')"
                     title="Mark Absent"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Absent
+                    Abs
+                  </button>
+                  <button
+                    class="status-btn leave-btn"
+                    :class="{ active: getStatus(student.id) === 'leave' }"
+                    :id="'btn-leave-' + student.id"
+                    @click="mark(student.id, 'leave')"
+                    title="Mark Leave"
+                  >
+                    Leave
+                  </button>
+                  <button
+                    class="status-btn halfday-btn"
+                    :class="{ active: getStatus(student.id) === 'halfday' }"
+                    :id="'btn-halfday-' + student.id"
+                    @click="mark(student.id, 'halfday')"
+                    title="Mark Half Day"
+                  >
+                    Half
+                  </button>
+                  <button
+                    class="status-btn late-btn"
+                    :class="{ active: getStatus(student.id) === 'late' }"
+                    :id="'btn-late-' + student.id"
+                    @click="mark(student.id, 'late')"
+                    title="Mark Late"
+                  >
+                    Late
                   </button>
                 </div>
               </td>
@@ -274,22 +328,37 @@ function getStatus(studentId) {
   return attStore.getRecord(selectedDate.value, studentId)
 }
 
-function mark(studentId, status) {
+async function mark(studentId, status) {
   const current = getStatus(studentId)
   // clicking same status again clears it (toggle)
   const next = current === status ? null : status
-  attStore.markAttendance(selectedDate.value, studentId, next)
-  showToast(`Marked ${status}`, 'success')
+  
+  const list = await attStore.markAttendance(selectedDate.value, studentId, next)
+  if (list && !list._error) {
+    // If successful, update the students list
+    studentStore.students = list
+    showToast(`Marked ${status || 'unmarked'}`, 'success')
+  } else {
+    showToast(`Failed to mark: ${list?._error || 'Unknown error'}`, 'error')
+  }
 }
 
-function bulkMark(status) {
+async function bulkMark(status) {
   const ids = filteredStudents.value.map(s => s.id)
   if (status === null) {
-    ids.forEach(id => attStore.markAttendance(selectedDate.value, id, null))
-    showToast('Attendance cleared', 'success')
+    const list = await attStore.markAll(selectedDate.value, ids, null)
+    if (list && !list._error) {
+      studentStore.students = list
+      showToast('Attendance cleared', 'success')
+    }
   } else {
-    attStore.markAll(selectedDate.value, ids, status)
-    showToast(`All marked ${status}`, 'success')
+    const list = await attStore.markAll(selectedDate.value, ids, status)
+    if (list && !list._error) {
+      studentStore.students = list
+      showToast(`All marked ${status}`, 'success')
+    } else {
+      showToast(`Bulk marking failed: ${list?._error || 'Unknown error'}`, 'error')
+    }
   }
 }
 
@@ -301,6 +370,8 @@ const summary = computed(() =>
 const pctPresent = computed(() => summary.value.total ? (summary.value.present / summary.value.total) * 100 : 0)
 const pctAbsent  = computed(() => summary.value.total ? (summary.value.absent  / summary.value.total) * 100 : 0)
 const pctLate    = computed(() => summary.value.total ? (summary.value.late    / summary.value.total) * 100 : 0)
+const pctLeave   = computed(() => summary.value.total ? (summary.value.leave   / summary.value.total) * 100 : 0)
+const pctHalfDay = computed(() => summary.value.total ? (summary.value.halfday / summary.value.total) * 100 : 0)
 
 /* ── Toast ─────────────────────────── */
 const toastVisible = ref(false)
@@ -469,9 +540,17 @@ function showToast(msg, type = 'success') {
 .summary-card.late .sc-icon  { background: #fef3c7; color: #d97706; }
 .summary-card.late .sc-value { color: #d97706; }
 
-.summary-card.unmarked { border-color: #e0e7ff; }
-.summary-card.unmarked .sc-icon  { background: #e0e7ff; color: #4f46e5; }
-.summary-card.unmarked .sc-value { color: #4f46e5; }
+.summary-card.leave { border-color: #e0e7ff; }
+.summary-card.leave .sc-icon  { background: #e0e7ff; color: #4f46e5; }
+.summary-card.leave .sc-value { color: #4f46e5; }
+
+.summary-card.halfday { border-color: #fce7f3; }
+.summary-card.halfday .sc-icon  { background: #fce7f3; color: #db2777; }
+.summary-card.halfday .sc-value { color: #db2777; }
+
+.summary-card.unmarked { border-color: #f3f4f6; }
+.summary-card.unmarked .sc-icon  { background: #f3f4f6; color: #9ca3af; }
+.summary-card.unmarked .sc-value { color: #9ca3af; }
 
 /* ── Progress Bar ────────────────────────────────────────────────────── */
 .progress-bar-wrap {
@@ -486,43 +565,34 @@ function showToast(msg, type = 'success') {
   display: flex;
 }
 
-.bar-present {
-  background: #10b981;
-  height: 100%;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.bar-late {
-  background: #f59e0b;
-  height: 100%;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.bar-absent {
-  background: #ef4444;
-  height: 100%;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.bar-present { background: #10b981; height: 100%; transition: width 0.4s ease; }
+.bar-late    { background: #f59e0b; height: 100%; transition: width 0.4s ease; }
+.bar-leave   { background: #6366f1; height: 100%; transition: width 0.4s ease; }
+.bar-halfday { background: #ec4899; height: 100%; transition: width 0.4s ease; }
+.bar-absent  { background: #ef4444; height: 100%; transition: width 0.4s ease; }
 
 .progress-legend {
   display: flex;
   gap: 18px;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .leg {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .leg::before {
   content: '';
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
@@ -531,6 +601,12 @@ function showToast(msg, type = 'success') {
 
 .leg-late { color: #d97706; }
 .leg-late::before { background: #f59e0b; }
+
+.leg-leave { color: #4f46e5; }
+.leg-leave::before { background: #6366f1; }
+
+.leg-halfday { color: #db2777; }
+.leg-halfday::before { background: #ec4899; }
 
 .leg-absent { color: #dc2626; }
 .leg-absent::before { background: #ef4444; }
@@ -570,8 +646,14 @@ function showToast(msg, type = 'success') {
 .bulk-absent { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
 .bulk-absent:hover { background: #dc2626; color: #fff; }
 
+.bulk-leave { background: #e0e7ff; color: #4f46e5; border-color: #c7d2fe; }
+.bulk-leave:hover { background: #4f46e5; color: #fff; }
+
 .bulk-late { background: #fef3c7; color: #d97706; border-color: #fde68a; }
 .bulk-late:hover { background: #d97706; color: #fff; }
+
+.bulk-halfday { background: #fce7f3; color: #db2777; border-color: #fbcfe8; }
+.bulk-halfday:hover { background: #db2777; color: #fff; }
 
 .bulk-clear { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
 .bulk-clear:hover { background: #6b7280; color: #fff; }
@@ -628,8 +710,8 @@ function showToast(msg, type = 'success') {
 .student-row.present { background: rgba(16, 185, 129, 0.04); }
 .student-row.present:hover { background: rgba(16, 185, 129, 0.08); }
 
-.student-row.absent { background: rgba(239, 68, 68, 0.04); }
-.student-row.absent:hover { background: rgba(239, 68, 68, 0.08); }
+.student-row.absent { background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; }
+.student-row.absent:hover { background: rgba(239, 68, 68, 0.12); }
 
 .student-row.late { background: rgba(245, 158, 11, 0.04); }
 .student-row.late:hover { background: rgba(245, 158, 11, 0.08); }
@@ -729,10 +811,22 @@ function showToast(msg, type = 'success') {
 .late-btn:hover { background: #d97706; color: #fff; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3); }
 .late-btn.active { background: #d97706; color: #fff; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3); }
 
-/* Absent */
-.absent-btn { border-color: #fecaca; color: #dc2626; background: #fee2e2; }
-.absent-btn:hover { background: #dc2626; color: #fff; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3); }
-.absent-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3); }
+/* Leave */
+.leave-btn { border-color: #e0e7ff; color: #4f46e5; background: #e0e7ff; }
+.leave-btn:hover { background: #4f46e5; color: #fff; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+.leave-btn.active { background: #4f46e5; color: #fff; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+
+/* Half Day */
+.halfday-btn { border-color: #fce7f3; color: #db2777; background: #fce7f3; }
+.halfday-btn:hover { background: #db2777; color: #fff; box-shadow: 0 4px 10px rgba(219, 39, 119, 0.3); }
+.halfday-btn.active { background: #db2777; color: #fff; box-shadow: 0 4px 10px rgba(219, 39, 119, 0.3); }
+
+/* Row color tints */
+.student-row.present { background: rgba(16, 185, 129, 0.04); }
+.student-row.absent { background: rgba(239, 68, 68, 0.04); }
+.student-row.late { background: rgba(245, 158, 11, 0.04); }
+.student-row.leave { background: rgba(79, 70, 229, 0.04); }
+.student-row.halfday { background: rgba(219, 39, 119, 0.04); }
 
 /* Empty row */
 .empty-row {
