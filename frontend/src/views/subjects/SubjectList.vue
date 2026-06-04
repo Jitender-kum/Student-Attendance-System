@@ -1,0 +1,327 @@
+<template>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1>Subjects</h1>
+        <p>{{ store.subjects.length }} subjects in your workspace</p>
+      </div>
+      <button class="btn-add" @click="openModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Subject
+      </button>
+    </div>
+
+    <div v-if="store.error" class="state-banner error-banner">
+      Could not reach backend: {{ store.error }}
+    </div>
+
+    <div class="filters">
+      <select v-model="departmentFilter" class="filter-select">
+        <option value="">All Departments</option>
+        <option v-for="department in departmentStore.departments" :key="department.id" :value="String(department.id)">
+          {{ department.name }}
+        </option>
+      </select>
+      <select v-model="courseFilter" class="filter-select">
+        <option value="">All Courses</option>
+        <option v-for="course in filteredCourseOptions" :key="course.id" :value="String(course.id)">
+          {{ course.name }}
+        </option>
+      </select>
+      <input v-model="search" type="text" class="search-input" placeholder="Search subject name or code…" />
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Subject</th>
+              <th>Code</th>
+              <th>Department</th>
+              <th>Course</th>
+              <th>Description</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="filteredSubjects.length === 0">
+              <td colspan="7" class="empty-row">No subjects found.</td>
+            </tr>
+            <tr v-for="(subject, index) in filteredSubjects" :key="subject.id">
+              <td>{{ index + 1 }}</td>
+              <td>{{ subject.name }}</td>
+              <td>{{ subject.code || '—' }}</td>
+              <td>{{ subject.departmentName || '—' }}</td>
+              <td>{{ subject.courseName || '—' }}</td>
+              <td class="description-cell">{{ subject.description || '—' }}</td>
+              <td class="actions">
+                <button class="action-btn open" @click="markAttendance(subject)">Mark Attendance</button>
+                <button class="action-btn edit" @click="openModal(subject)">Edit</button>
+                <button class="action-btn delete" @click="confirmDelete(subject)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <Teleport to="body">
+      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>{{ editingSubject ? 'Edit Subject' : 'Add Subject' }}</h2>
+            <button class="modal-close" @click="closeModal">×</button>
+          </div>
+          <form class="modal-form" @submit.prevent="saveSubject">
+            <div class="field">
+              <label>Department</label>
+              <select v-model="form.departmentId">
+                <option value="">Select department</option>
+                <option v-for="department in departmentStore.departments" :key="department.id" :value="department.id">
+                  {{ department.name }}
+                </option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Course</label>
+              <select v-model="form.courseId">
+                <option value="">Select course</option>
+                <option v-for="course in modalCourseOptions" :key="course.id" :value="course.id">
+                  {{ course.name }}
+                </option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Subject Name</label>
+              <input v-model="form.name" type="text" placeholder="e.g. Operating Systems" />
+            </div>
+            <div class="field">
+              <label>Subject Code</label>
+              <input v-model="form.code" type="text" placeholder="e.g. CS301" />
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <textarea v-model="form.description" rows="5" placeholder="Optional description"></textarea>
+            </div>
+            <div v-if="apiError" class="api-error">{{ apiError }}</div>
+            <div class="modal-actions">
+              <button type="submit" class="btn-primary">{{ editingSubject ? 'Save Changes' : 'Add Subject' }}</button>
+              <button type="button" class="btn-secondary" @click="closeModal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
+        <div class="modal modal-sm">
+          <div class="modal-header">
+            <h2>Delete Subject</h2>
+            <button class="modal-close" @click="deleteTarget = null">×</button>
+          </div>
+          <p class="confirm-msg">Delete <strong>{{ deleteTarget?.name }}</strong>?</p>
+          <div v-if="deleteError" class="api-error">{{ deleteError }}</div>
+          <div class="modal-actions">
+            <button class="btn-danger" @click="deleteSubject">Yes, Delete</button>
+            <button class="btn-secondary" @click="deleteTarget = null">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useSubjectStore } from '../../stores/subjects'
+import { useDepartmentStore } from '../../stores/departments'
+import { useCourseStore } from '../../stores/courses'
+
+const router = useRouter()
+const store = useSubjectStore()
+const departmentStore = useDepartmentStore()
+const courseStore = useCourseStore()
+
+const search = ref('')
+const departmentFilter = ref('')
+const courseFilter = ref('')
+const showModal = ref(false)
+const editingSubject = ref(null)
+const deleteTarget = ref(null)
+const apiError = ref('')
+const deleteError = ref('')
+const form = reactive({
+  departmentId: '',
+  courseId: '',
+  name: '',
+  code: '',
+  description: '',
+})
+
+onMounted(async () => {
+  await Promise.all([
+    departmentStore.fetchDepartments(),
+    courseStore.fetchCourses(),
+  ])
+  await loadSubjects()
+})
+
+watch(departmentFilter, async (value) => {
+  courseFilter.value = ''
+  await courseStore.fetchCourses(value ? { departmentId: value } : {})
+  await loadSubjects()
+})
+
+watch(courseFilter, loadSubjects)
+
+watch(() => form.departmentId, async (value) => {
+  await courseStore.fetchCourses(value ? { departmentId: value } : {})
+  if (value && !modalCourseOptions.value.find((course) => course.id === Number(form.courseId))) {
+    form.courseId = ''
+  }
+})
+
+const filteredSubjects = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  if (!query) return store.subjects
+  return store.subjects.filter((subject) =>
+    subject.name.toLowerCase().includes(query) ||
+    String(subject.code || '').toLowerCase().includes(query) ||
+    String(subject.departmentName || '').toLowerCase().includes(query) ||
+    String(subject.courseName || '').toLowerCase().includes(query)
+  )
+})
+
+const filteredCourseOptions = computed(() => {
+  if (!departmentFilter.value) return courseStore.courses
+  return courseStore.courses.filter((course) => String(course.departmentId) === departmentFilter.value)
+})
+
+const modalCourseOptions = computed(() => {
+  if (!form.departmentId) return courseStore.courses
+  return courseStore.courses.filter((course) => course.departmentId === Number(form.departmentId))
+})
+
+async function loadSubjects() {
+  await store.fetchSubjects({
+    departmentId: departmentFilter.value || undefined,
+    courseId: courseFilter.value || undefined,
+  })
+}
+
+function openModal(subject = null) {
+  editingSubject.value = subject
+  apiError.value = ''
+  Object.assign(form, {
+    departmentId: subject?.departmentId || '',
+    courseId: subject?.courseId || '',
+    name: subject?.name || '',
+    code: subject?.code || '',
+    description: subject?.description || '',
+  })
+  courseStore.fetchCourses(form.departmentId ? { departmentId: form.departmentId } : {})
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+}
+
+async function saveSubject() {
+  apiError.value = ''
+  try {
+    const name = form.name.trim()
+    if (!form.departmentId) throw new Error('Department is required')
+    if (!form.courseId) throw new Error('Course is required')
+    if (!name) throw new Error('Subject name is required')
+
+    const payload = {
+      departmentId: Number(form.departmentId),
+      courseId: Number(form.courseId),
+      name,
+      code: form.code.trim() || null,
+      description: form.description.trim() || null,
+    }
+
+    if (editingSubject.value) {
+      await store.updateSubject(editingSubject.value.id, payload)
+    } else {
+      await store.addSubject(payload)
+    }
+
+    await loadSubjects()
+    closeModal()
+  } catch (e) {
+    apiError.value = e.message
+  }
+}
+
+function confirmDelete(subject) {
+  deleteTarget.value = subject
+  deleteError.value = ''
+}
+
+async function deleteSubject() {
+  if (!deleteTarget.value) return
+  try {
+    await store.deleteSubject(deleteTarget.value.id)
+    deleteTarget.value = null
+  } catch (e) {
+    deleteError.value = e.message
+  }
+}
+
+function markAttendance(subject) {
+  router.push({
+    name: 'StudentAttendance',
+    query: {
+      departmentId: subject.departmentId ? String(subject.departmentId) : undefined,
+      courseId: subject.courseId ? String(subject.courseId) : undefined,
+      subjectId: subject.id ? String(subject.id) : undefined,
+    },
+  })
+}
+</script>
+
+<style scoped>
+.page { padding: 4px 0; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; }
+.page-header h1 { margin: 0 0 4px; font-size: 24px; color: #111827; }
+.page-header p { margin: 0; color: #6b7280; font-size: 13.5px; }
+.btn-add, .btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: #7c3aed; color: white; border: none; border-radius: 9px; cursor: pointer; font-weight: 600; }
+.btn-secondary { padding: 9px 18px; background: white; border: 1.5px solid #e5e7eb; border-radius: 9px; cursor: pointer; }
+.btn-danger { padding: 9px 18px; background: #ef4444; color: white; border: none; border-radius: 9px; cursor: pointer; font-weight: 600; }
+.filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-select, .search-input { padding: 10px 12px; border: 1.5px solid #e5e7eb; border-radius: 9px; background: #fff; }
+.search-input { min-width: 260px; }
+.table-card { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+thead th { font-size: 11.5px; text-transform: uppercase; color: #6b7280; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.action-btn { border: none; background: #f9fafb; border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+.action-btn.open { color: #1d4ed8; }
+.action-btn.edit { color: #7c3aed; }
+.action-btn.delete { color: #dc2626; }
+.empty-row { text-align: center; color: #9ca3af; }
+.description-cell { min-width: 220px; color: #6b7280; }
+.state-banner { margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; }
+.error-banner { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.35); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+.modal { background: #fff; border-radius: 16px; width: 100%; max-width: 520px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.18); }
+.modal-sm { max-width: 420px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; }
+.modal-form { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field input, .field select, .field textarea { padding: 10px 12px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; }
+.field textarea { resize: vertical; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-close { border: none; background: none; font-size: 22px; cursor: pointer; color: #9ca3af; }
+.api-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 10px; padding: 11px 14px; font-size: 13px; }
+.confirm-msg { padding: 16px 24px; font-size: 14px; color: #374151; line-height: 1.6; margin: 0; }
+</style>

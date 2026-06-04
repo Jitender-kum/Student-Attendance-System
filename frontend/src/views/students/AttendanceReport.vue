@@ -16,18 +16,55 @@
         </div>
         <div>
           <h1 class="page-title">Attendance Report</h1>
-          <p class="page-subtitle">All-time attendance totals per student across every recorded day</p>
+          <p class="page-subtitle">Session-wise attendance rows with subject and lecture slot details</p>
         </div>
       </div>
 
       <!-- Toolbar -->
       <div class="toolbar">
         <div class="control-group">
-          <label class="control-label">Class</label>
-          <select id="filter-class" class="filter-select" v-model="selectedClass">
-            <option value="all">All Classes</option>
-            <option v-for="cls in classes" :key="cls" :value="cls">{{ cls }}</option>
+          <label class="control-label">Report Type</label>
+          <select class="filter-select" v-model="reportType">
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="semester">Semester-wise</option>
           </select>
+        </div>
+        <div class="control-group">
+          <label class="control-label">Department</label>
+          <select class="filter-select" v-model="selectedDepartment">
+            <option value="">All Departments</option>
+            <option v-for="department in departmentStore.departments" :key="department.id" :value="String(department.id)">{{ department.name }}</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label class="control-label">Course</label>
+          <select class="filter-select" v-model="selectedCourse">
+            <option value="">All Courses</option>
+            <option v-for="course in courseStore.courses" :key="course.id" :value="String(course.id)">{{ course.name }}</option>
+          </select>
+        </div>
+        <div class="control-group" v-if="reportType === 'weekly'">
+          <label class="control-label">Week Start</label>
+          <input v-model="selectedWeek" type="date" class="filter-select" />
+        </div>
+        <div class="control-group" v-if="reportType === 'monthly'">
+          <label class="control-label">Month</label>
+          <select class="filter-select" v-model="selectedMonth">
+            <option v-for="month in 12" :key="month" :value="String(month)">{{ month }}</option>
+          </select>
+        </div>
+        <div class="control-group" v-if="reportType === 'monthly'">
+          <label class="control-label">Year</label>
+          <input v-model="selectedYear" type="number" class="filter-select" />
+        </div>
+        <div class="control-group" v-if="reportType === 'semester'">
+          <label class="control-label">Year</label>
+          <input v-model="selectedStudentYear" type="number" min="1" max="10" class="filter-select" />
+        </div>
+        <div class="control-group" v-if="reportType === 'semester'">
+          <label class="control-label">Semester</label>
+          <input v-model="selectedSemester" type="number" min="1" max="12" class="filter-select" />
         </div>
         <div class="control-group">
           <label class="control-label">Sort by</label>
@@ -43,6 +80,17 @@
           <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="student-search" type="text" class="search-input" v-model="searchQuery" placeholder="Search student…" />
         </div>
+        <div class="export-actions">
+          <button class="export-btn" :disabled="downloadLoading || reportStore.loading" @click="downloadReport('weekly')">
+            Download Weekly Excel
+          </button>
+          <button class="export-btn" :disabled="downloadLoading || reportStore.loading" @click="downloadReport('monthly')">
+            Download Monthly Excel
+          </button>
+          <button class="export-btn" :disabled="downloadLoading || reportStore.loading" @click="downloadReport('semester')">
+            Download Semester Excel
+          </button>
+        </div>
       </div>
     </div>
 
@@ -54,7 +102,7 @@
         </div>
         <div>
           <div class="snap-value">{{ filteredRows.length }}</div>
-          <div class="snap-label">Students</div>
+          <div class="snap-label">Session Rows</div>
         </div>
       </div>
 
@@ -102,73 +150,111 @@
         <table class="report-table">
           <thead>
             <tr>
+              <th class="th-select">
+                <input
+                  type="checkbox"
+                  class="row-checkbox"
+                  :checked="allVisibleSelected"
+                  :indeterminate.prop="someVisibleSelected && !allVisibleSelected"
+                  @change="toggleSelectAllVisible($event.target.checked)"
+                />
+              </th>
               <th class="th-rank">#</th>
               <th class="th-name">Student</th>
               <th class="th-class">Class</th>
+              <th class="th-session">Session</th>
               <th class="th-pct">Attendance %</th>
               <th class="th-bar">Progress</th>
               <th class="th-present">Present</th>
               <th class="th-late">Late</th>
               <th class="th-absent">Absent</th>
+              <th class="th-absent">Leave</th>
+              <th class="th-absent">Half Day</th>
               <th class="th-total">Total Days</th>
               <th class="th-status">Status</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="sortedRows.length === 0">
-              <td colspan="10" class="empty-row">No students match the current filters.</td>
+            <tr v-if="reportStore.loading">
+              <td colspan="14" class="empty-row">Loading report...</td>
             </tr>
-            <tr v-for="(row, idx) in sortedRows" :key="row.student.id"
+            <tr v-else-if="sortedRows.length === 0">
+              <td colspan="14" class="empty-row">No students match the current filters.</td>
+            </tr>
+            <tr v-for="(row, idx) in sortedRows" :key="rowKey(row, idx)"
               class="report-row" :class="rowStatusClass(row)">
+              <td class="td-select">
+                <input
+                  type="checkbox"
+                  class="row-checkbox"
+                  :checked="isSelected(row.studentId)"
+                  @change="toggleRowSelection(row.studentId, $event.target.checked)"
+                />
+              </td>
               <td class="td-rank">{{ idx + 1 }}</td>
 
               <td class="td-name">
                 <div class="student-info">
-                  <div class="student-avatar" :class="'avatar-' + (row.student.id % 6)">
-                    {{ row.student.firstName[0] }}{{ row.student.lastName[0] }}
+                  <div class="student-avatar" :class="'avatar-' + (row.studentId % 6)">
+                    {{ row.studentName.split(' ')[0]?.[0] || '' }}{{ row.studentName.split(' ')[1]?.[0] || '' }}
                   </div>
                   <div>
-                    <div class="student-name">{{ row.student.firstName }} {{ row.student.lastName }}</div>
-                    <div class="student-meta">{{ row.student.roll }} · {{ row.student.email }}</div>
+                    <div class="student-name">{{ row.studentName }}</div>
+                    <div class="student-meta">{{ row.rollNumber }} · Year {{ row.year ?? '—' }} · Semester {{ row.semester ?? '—' }}</div>
                   </div>
                 </div>
               </td>
 
               <td class="td-class">
-                <span class="class-badge">{{ row.student.classSection }}</span>
+                <span class="class-badge">{{ row.departmentName }} · {{ row.courseName }}</span>
+              </td>
+
+              <td class="td-session">
+                <div class="session-meta-block">
+                  <div class="session-subject">{{ row.subjectName || 'N/A' }}</div>
+                  <div class="session-time">
+                    {{ row.periodLabel || 'N/A' }} · {{ formatSessionTime(row) }}
+                  </div>
+                </div>
               </td>
 
               <td class="td-pct">
-                <span class="pct-pill" :class="pctPillClass(row.pct)">
-                  {{ row.pct !== null ? row.pct + '%' : '—' }}
+                <span class="pct-pill" :class="pctPillClass(row.attendancePercentage)">
+                  {{ row.attendancePercentage }}%
                 </span>
               </td>
 
               <td class="td-bar">
-                <div class="mini-bar-track" v-if="row.total > 0">
-                  <div class="mini-bar-present" :style="{ width: ((row.present / row.total) * 100) + '%' }"></div>
-                  <div class="mini-bar-late"    :style="{ width: ((row.late    / row.total) * 100) + '%' }"></div>
-                  <div class="mini-bar-absent"  :style="{ width: ((row.absent  / row.total) * 100) + '%' }"></div>
+                <div class="mini-bar-track" v-if="row.totalWorkingDays > 0">
+                  <div class="mini-bar-present" :style="{ width: ((row.presentCount / row.totalWorkingDays) * 100) + '%' }"></div>
+                  <div class="mini-bar-late"    :style="{ width: ((row.lateCount / row.totalWorkingDays) * 100) + '%' }"></div>
+                  <div class="mini-bar-absent"  :style="{ width: ((row.absentCount / row.totalWorkingDays) * 100) + '%' }"></div>
                 </div>
                 <span v-else class="bar-na">No data</span>
               </td>
 
               <td class="td-present">
-                <div class="count-chip present-chip">{{ row.present }}</div>
+                <div class="count-chip present-chip">{{ row.presentCount }}</div>
               </td>
               <td class="td-late">
-                <div class="count-chip late-chip">{{ row.late }}</div>
+                <div class="count-chip late-chip">{{ row.lateCount }}</div>
               </td>
               <td class="td-absent">
-                <div class="count-chip absent-chip">{{ row.absent }}</div>
+                <div class="count-chip absent-chip">{{ row.absentCount }}</div>
+              </td>
+              <td class="td-absent">
+                <div class="count-chip leave-chip">{{ row.leaveCount }}</div>
+              </td>
+              <td class="td-absent">
+                <div class="count-chip halfday-chip">{{ row.halfDayCount }}</div>
               </td>
               <td class="td-total">
-                <span class="total-days">{{ row.total }}</span>
+                <span class="total-days">{{ row.totalWorkingDays }}</span>
               </td>
 
               <td class="td-status">
-                <span class="status-badge" :class="statusBadgeClass(row.pct)">
-                  {{ statusLabel(row.pct) }}
+                <span class="status-badge" :class="statusBadgeClass(row.attendancePercentage)">
+                  {{ statusLabel(row.attendancePercentage) }}
                 </span>
               </td>
             </tr>
@@ -178,10 +264,9 @@
 
       <!-- Table footer summary -->
       <div class="table-footer">
-        <span class="tf-info">
-          Showing {{ sortedRows.length }} of {{ allRows.length }} students
-        </span>
+        <span class="tf-info">Showing {{ sortedRows.length }} report rows</span>
         <div class="tf-legend">
+          <span class="selection-summary">{{ selectedCountLabel }}</span>
           <span class="tfl tfl-excellent">Excellent ≥90%</span>
           <span class="tfl tfl-good">Good ≥75%</span>
           <span class="tfl tfl-warning">Warning ≥50%</span>
@@ -199,53 +284,62 @@
       </div>
 
       <div class="cards-grid">
-        <div v-for="row in sortedRows" :key="'card-' + row.student.id"
+        <div v-for="(row, idx) in sortedRows" :key="'card-' + rowKey(row, idx)"
           class="student-card" :class="rowStatusClass(row)">
 
           <div class="sc-top">
-            <div class="student-avatar lg" :class="'avatar-' + (row.student.id % 6)">
-              {{ row.student.firstName[0] }}{{ row.student.lastName[0] }}
+            <div class="student-avatar lg" :class="'avatar-' + (row.studentId % 6)">
+              {{ row.studentName.split(' ')[0]?.[0] || '' }}{{ row.studentName.split(' ')[1]?.[0] || '' }}
             </div>
             <div class="sc-info">
-              <div class="sc-name">{{ row.student.firstName }} {{ row.student.lastName }}</div>
-              <div class="sc-meta">{{ row.student.roll }} · {{ row.student.classSection }}</div>
+              <div class="sc-name">{{ row.studentName }}</div>
+              <div class="sc-meta">{{ row.rollNumber }} · {{ row.departmentName }}</div>
+              <div class="sc-meta">{{ row.subjectName || 'N/A' }} · {{ row.periodLabel || 'N/A' }} · {{ formatSessionTime(row) }}</div>
             </div>
-            <span class="pct-pill lg-pill" :class="pctPillClass(row.pct)">
-              {{ row.pct !== null ? row.pct + '%' : '—' }}
+            <span class="pct-pill lg-pill" :class="pctPillClass(row.attendancePercentage)">
+              {{ row.attendancePercentage }}%
             </span>
           </div>
 
           <!-- mini progress bar -->
-          <div class="sc-bar-track" v-if="row.total > 0">
-            <div class="sc-bar-present" :style="{ width: ((row.present / row.total)*100)+'%' }"></div>
-            <div class="sc-bar-late"    :style="{ width: ((row.late    / row.total)*100)+'%' }"></div>
-            <div class="sc-bar-absent"  :style="{ width: ((row.absent  / row.total)*100)+'%' }"></div>
+          <div class="sc-bar-track" v-if="row.totalWorkingDays > 0">
+            <div class="sc-bar-present" :style="{ width: ((row.presentCount / row.totalWorkingDays)*100)+'%' }"></div>
+            <div class="sc-bar-late"    :style="{ width: ((row.lateCount / row.totalWorkingDays)*100)+'%' }"></div>
+            <div class="sc-bar-absent"  :style="{ width: ((row.absentCount / row.totalWorkingDays)*100)+'%' }"></div>
           </div>
           <div v-else class="sc-bar-track sc-no-data"></div>
 
           <!-- counts -->
           <div class="sc-counts">
             <div class="sc-count sc-p">
-              <div class="scc-num">{{ row.present }}</div>
+              <div class="scc-num">{{ row.presentCount }}</div>
               <div class="scc-lbl">Present</div>
             </div>
             <div class="sc-count sc-l">
-              <div class="scc-num">{{ row.late }}</div>
+              <div class="scc-num">{{ row.lateCount }}</div>
               <div class="scc-lbl">Late</div>
             </div>
             <div class="sc-count sc-a">
-              <div class="scc-num">{{ row.absent }}</div>
+              <div class="scc-num">{{ row.absentCount }}</div>
               <div class="scc-lbl">Absent</div>
             </div>
+            <div class="sc-count sc-h">
+              <div class="scc-num">{{ row.halfDayCount }}</div>
+              <div class="scc-lbl">Half</div>
+            </div>
+            <div class="sc-count sc-v">
+              <div class="scc-num">{{ row.leaveCount }}</div>
+              <div class="scc-lbl">Leave</div>
+            </div>
             <div class="sc-count sc-t">
-              <div class="scc-num">{{ row.total }}</div>
+              <div class="scc-num">{{ row.totalWorkingDays }}</div>
               <div class="scc-lbl">Total</div>
             </div>
           </div>
 
           <div class="sc-bottom">
-            <span class="status-badge" :class="statusBadgeClass(row.pct)">
-              {{ statusLabel(row.pct) }}
+            <span class="status-badge" :class="statusBadgeClass(row.attendancePercentage)">
+              {{ statusLabel(row.attendancePercentage) }}
             </span>
           </div>
         </div>
@@ -256,106 +350,233 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useStudentStore }    from '../../stores/students'
-import { useAttendanceStore } from '../../stores/attendance'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useDepartmentStore } from '../../stores/departments'
+import { useCourseStore } from '../../stores/courses'
+import { useReportStore } from '../../stores/reports'
+import { reportService } from '../../services/academic'
 
-const studentStore = useStudentStore()
-const attStore     = useAttendanceStore()
+const departmentStore = useDepartmentStore()
+const courseStore = useCourseStore()
+const reportStore = useReportStore()
 
-// Always load live student data from backend
-onMounted(() => studentStore.fetchStudents())
+const reportType = ref('weekly')
+const selectedDepartment = ref('')
+const selectedCourse = ref('')
+const selectedWeek = ref(new Date().toISOString().split('T')[0])
+const selectedMonth = ref(String(new Date().getMonth() + 1))
+const selectedYear = ref(String(new Date().getFullYear()))
+const selectedStudentYear = ref('1')
+const selectedSemester = ref('1')
+const sortBy = ref('pct-desc')
+const searchQuery = ref('')
+const selectedStudentIds = ref([])
+const downloadLoading = ref(false)
 
-/* ─── filters ────────────────────────────────────── */
-const selectedClass = ref('all')
-const sortBy        = ref('pct-desc')
-const searchQuery   = ref('')
-
-const classes = computed(() => {
-  const s = new Set(studentStore.students.map(s => s.classSection))
-  return [...s].sort()
+onMounted(async () => {
+  await Promise.all([departmentStore.fetchDepartments(), courseStore.fetchCourses()])
+  await loadReport()
 })
 
-/* ─── base rows ──────────────────────────────────── */
-const allRows = computed(() =>
-  attStore.getAllStudentTotals(studentStore.students)
+watch(selectedDepartment, async (value) => {
+  selectedCourse.value = ''
+  await courseStore.fetchCourses(value ? { departmentId: value } : {})
+  await loadReport()
+})
+
+watch([reportType, selectedCourse, selectedWeek, selectedMonth, selectedYear, selectedStudentYear, selectedSemester], loadReport)
+watch(
+  () => reportStore.rows,
+  (rows) => {
+    const validIds = new Set(rows.map((row) => row.studentId))
+    selectedStudentIds.value = selectedStudentIds.value.filter((id) => validIds.has(id))
+  }
 )
 
-/* ─── total days ever recorded (any student) ──────── */
-const totalDaysRecorded = computed(() =>
-  Object.keys(attStore.attendance).length
-)
+async function loadReport() {
+  const common = baseFilters.value
+  if (reportType.value === 'weekly') {
+    await reportStore.fetchWeekly({ ...common, startDate: selectedWeek.value })
+  } else if (reportType.value === 'monthly') {
+    await reportStore.fetchMonthly({ ...common, year: selectedYear.value, month: selectedMonth.value })
+  } else {
+    await reportStore.fetchSemester({ ...common, year: selectedStudentYear.value || undefined, semester: selectedSemester.value })
+  }
+}
 
-/* ─── filter + sort ──────────────────────────────── */
+const totalDaysRecorded = computed(() => {
+  return reportStore.rows.reduce((max, row) => Math.max(max, row.totalWorkingDays || 0), 0)
+})
+
 const filteredRows = computed(() => {
-  let rows = allRows.value
-  if (selectedClass.value !== 'all') {
-    rows = rows.filter(r => r.student.classSection === selectedClass.value)
-  }
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    rows = rows.filter(r =>
-      `${r.student.firstName} ${r.student.lastName}`.toLowerCase().includes(q) ||
-      r.student.roll.toLowerCase().includes(q) ||
-      r.student.email.toLowerCase().includes(q)
-    )
-  }
-  return rows
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return reportStore.rows
+  return reportStore.rows.filter((row) =>
+    row.studentName.toLowerCase().includes(query) ||
+    row.rollNumber.toLowerCase().includes(query) ||
+    row.departmentName.toLowerCase().includes(query) ||
+    row.courseName.toLowerCase().includes(query) ||
+    (row.subjectName || '').toLowerCase().includes(query) ||
+    (row.periodLabel || '').toLowerCase().includes(query) ||
+    (row.sessionName || '').toLowerCase().includes(query) ||
+    String(row.startTime || '').toLowerCase().includes(query) ||
+    String(row.endTime || '').toLowerCase().includes(query)
+  )
 })
 
 const sortedRows = computed(() => {
   const rows = [...filteredRows.value]
   switch (sortBy.value) {
-    case 'name':        return rows.sort((a,b) => `${a.student.firstName} ${a.student.lastName}`.localeCompare(`${b.student.firstName} ${b.student.lastName}`))
-    case 'pct-desc':    return rows.sort((a,b) => (b.pct ?? -1) - (a.pct ?? -1))
-    case 'pct-asc':     return rows.sort((a,b) => (a.pct ?? 101) - (b.pct ?? 101))
-    case 'absent-desc': return rows.sort((a,b) => b.absent - a.absent)
-    case 'total-desc':  return rows.sort((a,b) => b.total - a.total)
-    default:            return rows
+    case 'name': return rows.sort((a, b) => a.studentName.localeCompare(b.studentName))
+    case 'pct-asc': return rows.sort((a, b) => a.attendancePercentage - b.attendancePercentage)
+    case 'absent-desc': return rows.sort((a, b) => b.absentCount - a.absentCount)
+    case 'total-desc': return rows.sort((a, b) => b.totalWorkingDays - a.totalWorkingDays)
+    default: return rows.sort((a, b) => b.attendancePercentage - a.attendancePercentage)
   }
 })
 
-/* ─── snapshot stats ─────────────────────────────── */
 const overallPct = computed(() => {
-  const rows = filteredRows.value.filter(r => r.pct !== null)
-  if (!rows.length) return null
-  return Math.round(rows.reduce((acc,r) => acc + r.pct, 0) / rows.length)
+  if (!filteredRows.value.length) return null
+  return Math.round(filteredRows.value.reduce((sum, row) => sum + row.attendancePercentage, 0) / filteredRows.value.length)
 })
 
-const atRiskCount = computed(() =>
-  filteredRows.value.filter(r => r.pct !== null && r.pct < 75).length
-)
+const atRiskCount = computed(() => filteredRows.value.filter((row) => row.attendancePercentage < 75).length)
+const baseFilters = computed(() => ({
+  departmentId: selectedDepartment.value || undefined,
+  courseId: selectedCourse.value || undefined,
+}))
+const visibleStudentIds = computed(() => sortedRows.value.map((row) => row.studentId))
+const selectedVisibleIds = computed(() => visibleStudentIds.value.filter((id) => selectedStudentIds.value.includes(id)))
+const allVisibleSelected = computed(() => visibleStudentIds.value.length > 0 && selectedVisibleIds.value.length === visibleStudentIds.value.length)
+const someVisibleSelected = computed(() => selectedVisibleIds.value.length > 0)
+const selectedCountLabel = computed(() => {
+  if (selectedStudentIds.value.length === 0) {
+    return 'No students selected; download uses all filtered rows'
+  }
+  return `${selectedStudentIds.value.length} student${selectedStudentIds.value.length === 1 ? '' : 's'} selected`
+})
 
-/* ─── styling helpers ────────────────────────────── */
 function pctPillClass(pct) {
-  if (pct === null) return 'pill-none'
-  if (pct >= 90)    return 'pill-excellent'
-  if (pct >= 75)    return 'pill-good'
-  if (pct >= 50)    return 'pill-warning'
+  if (pct >= 90) return 'pill-excellent'
+  if (pct >= 75) return 'pill-good'
+  if (pct >= 50) return 'pill-warning'
   return 'pill-risk'
 }
 
 function statusLabel(pct) {
-  if (pct === null) return 'No Data'
-  if (pct >= 90)    return 'Excellent'
-  if (pct >= 75)    return 'Good'
-  if (pct >= 50)    return 'Warning'
+  if (pct >= 90) return 'Excellent'
+  if (pct >= 75) return 'Good'
+  if (pct >= 50) return 'Warning'
   return 'At Risk'
 }
 
 function statusBadgeClass(pct) {
-  if (pct === null) return 'badge-none'
-  if (pct >= 90)    return 'badge-excellent'
-  if (pct >= 75)    return 'badge-good'
-  if (pct >= 50)    return 'badge-warning'
+  if (pct >= 90) return 'badge-excellent'
+  if (pct >= 75) return 'badge-good'
+  if (pct >= 50) return 'badge-warning'
   return 'badge-risk'
 }
 
 function rowStatusClass(row) {
-  if (row.pct === null) return ''
-  if (row.pct < 50) return 'row-risk'
-  if (row.pct < 75) return 'row-warn'
+  if (row.attendancePercentage < 50) return 'row-risk'
+  if (row.attendancePercentage < 75) return 'row-warn'
   return ''
+}
+
+function formatSessionTime(row) {
+  const start = row.startTime || ''
+  const end = row.endTime || ''
+  if (start && end) return `${start}–${end}`
+  if (start || end) return start || end
+  return 'N/A'
+}
+
+function rowKey(row, index) {
+  return [
+    row.studentId ?? 'student',
+    row.sessionDate ?? 'date',
+    row.sessionName ?? 'session',
+    row.subjectName ?? 'subject',
+    row.startTime ?? 'start',
+    row.endTime ?? 'end',
+    index,
+  ].join('-')
+}
+
+function isSelected(studentId) {
+  return selectedStudentIds.value.includes(studentId)
+}
+
+function toggleRowSelection(studentId, checked) {
+  const ids = new Set(selectedStudentIds.value)
+  if (checked) {
+    ids.add(studentId)
+  } else {
+    ids.delete(studentId)
+  }
+  selectedStudentIds.value = [...ids]
+}
+
+function toggleSelectAllVisible(checked) {
+  const ids = new Set(selectedStudentIds.value)
+  visibleStudentIds.value.forEach((studentId) => {
+    if (checked) {
+      ids.add(studentId)
+    } else {
+      ids.delete(studentId)
+    }
+  })
+  selectedStudentIds.value = [...ids]
+}
+
+function buildFilters(type) {
+  const filters = { ...baseFilters.value }
+  if (type === 'weekly') {
+    filters.startDate = selectedWeek.value
+  } else if (type === 'monthly') {
+    filters.year = selectedYear.value
+    filters.month = selectedMonth.value
+  } else {
+    filters.year = selectedStudentYear.value || undefined
+    filters.semester = selectedSemester.value
+  }
+  if (selectedStudentIds.value.length > 0) {
+    filters.studentIds = selectedStudentIds.value
+  }
+  return filters
+}
+
+function exportFilename(type) {
+  if (type === 'weekly') {
+    return `attendance-weekly-${selectedWeek.value}.xlsx`
+  }
+  if (type === 'monthly') {
+    return `attendance-monthly-${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}.xlsx`
+  }
+  return `attendance-semester-year-${selectedStudentYear.value || 'all'}-sem-${selectedSemester.value}.xlsx`
+}
+
+async function downloadReport(type) {
+  downloadLoading.value = true
+  try {
+    const filters = buildFilters(type)
+    const blob = type === 'weekly'
+      ? await reportService.weeklyExport(filters)
+      : type === 'monthly'
+        ? await reportService.monthlyExport(filters)
+        : await reportService.semesterExport(filters)
+
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = exportFilename(type)
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  } finally {
+    downloadLoading.value = false
+  }
 }
 </script>
 
@@ -394,6 +615,38 @@ function rowStatusClass(row) {
 /* toolbar */
 .toolbar {
   display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+}
+
+.export-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.export-btn {
+  height: 38px;
+  padding: 0 14px;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.export-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .control-group { display: flex; flex-direction: column; gap: 4px; }
@@ -528,6 +781,19 @@ function rowStatusClass(row) {
 .report-row:last-child td { border-bottom: none; }
 .report-row:hover { background: #fafafa; }
 
+.th-select,
+.td-select {
+  width: 40px;
+  text-align: center;
+}
+
+.row-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
 /* row risk tints */
 .row-risk { background: rgba(239,68,68,0.03); }
 .row-risk:hover { background: rgba(239,68,68,0.07); }
@@ -558,6 +824,26 @@ function rowStatusClass(row) {
 .class-badge {
   background: #ede9fe; color: #6d28d9;
   font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
+}
+
+.td-session {
+  min-width: 220px;
+}
+
+.session-meta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-subject {
+  font-weight: 600;
+  color: #111827;
+}
+
+.session-time {
+  font-size: 11.5px;
+  color: #9ca3af;
 }
 
 /* pct pill */
@@ -599,6 +885,8 @@ function rowStatusClass(row) {
 .present-chip { background: #d1fae5; color: #059669; }
 .late-chip    { background: #fef3c7; color: #d97706; }
 .absent-chip  { background: #fee2e2; color: #dc2626; }
+.leave-chip   { background: #e0e7ff; color: #4f46e5; }
+.halfday-chip { background: #fce7f3; color: #db2777; }
 
 .total-days   { font-size: 14px; font-weight: 600; color: #374151; }
 
@@ -628,6 +916,13 @@ function rowStatusClass(row) {
 }
 
 .tf-info { font-size: 12.5px; color: #9ca3af; }
+
+.selection-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-right: 8px;
+}
 
 .tf-legend { display: flex; gap: 14px; flex-wrap: wrap; }
 
@@ -696,7 +991,7 @@ function rowStatusClass(row) {
 
 /* counts row */
 .sc-counts {
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   gap: 6px;
 }
 
@@ -713,11 +1008,15 @@ function rowStatusClass(row) {
 .sc-l .scc-num { color: #d97706; }
 .sc-a .scc-num { color: #dc2626; }
 .sc-t .scc-num { color: #374151; }
+.sc-h .scc-num { color: #db2777; }
+.sc-v .scc-num { color: #4f46e5; }
 
 .sc-p { background: #f0fdf4; }
 .sc-l { background: #fffbeb; }
 .sc-a { background: #fef2f2; }
 .sc-t { background: #f3f4f6; }
+.sc-h { background: #fdf2f8; }
+.sc-v { background: #eef2ff; }
 
 .sc-bottom { display: flex; justify-content: flex-end; }
 </style>

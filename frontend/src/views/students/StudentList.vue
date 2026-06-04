@@ -1,7 +1,5 @@
 <template>
   <div class="page">
-
-    <!-- Page Header -->
     <div class="page-header">
       <div>
         <h1>Student List</h1>
@@ -13,32 +11,32 @@
       </button>
     </div>
 
-    <!-- Loading / Error states -->
-    <div v-if="store.loading" class="state-banner loading-banner">
-      <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      Loading students from server…
-    </div>
-    <div v-else-if="store.error" class="state-banner error-banner">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div v-if="store.error" class="state-banner error-banner">
       Could not reach backend: {{ store.error }}
-      <button class="retry-btn" @click="store.fetchStudents()">Retry</button>
     </div>
 
-    <!-- Table Card -->
     <div class="table-card">
-
-      <!-- Search + filter bar -->
       <div class="toolbar">
         <div class="search-bar">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b93a5" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Search by name, roll or class…" v-model="search" />
-          <button v-if="search" class="clear-search" @click="search = ''" title="Clear">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <input type="text" placeholder="Search by name, roll or email…" v-model="search" />
+        </div>
+        <div class="toolbar-filters">
+          <select v-model="departmentFilter" class="toolbar-select">
+            <option value="">All Departments</option>
+            <option v-for="department in departmentStore.departments" :key="department.id" :value="String(department.id)">
+              {{ department.name }}
+            </option>
+          </select>
+          <select v-model="courseFilter" class="toolbar-select">
+            <option value="">All Courses</option>
+            <option v-for="course in filteredCourseOptions" :key="course.id" :value="String(course.id)">
+              {{ course.name }}
+            </option>
+          </select>
         </div>
       </div>
 
-      <!-- Table -->
       <div class="table-wrap">
         <table>
           <thead>
@@ -49,6 +47,7 @@
               <th>Department</th>
               <th>Course</th>
               <th>Year</th>
+              <th>Sem</th>
               <th>Phone</th>
               <th>Email</th>
               <th>Status</th>
@@ -57,12 +56,7 @@
           </thead>
           <tbody>
             <tr v-if="filtered.length === 0">
-              <td colspan="10" class="empty-row">
-                <div class="empty-state">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d0ccd8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <span>No students found</span>
-                </div>
-              </td>
+              <td colspan="11" class="empty-row">No students found</td>
             </tr>
             <tr v-for="(s, i) in filtered" :key="s.id">
               <td class="col-num">{{ i + 1 }}</td>
@@ -71,28 +65,25 @@
                   <div class="avatar-sm">{{ initials(s.name) }}</div>
                   <div>
                     <div class="name-text">{{ s.name }}</div>
-                    <div class="sub-text">{{ s.address }}</div>
+                    <div class="sub-text">{{ s.address || 'No address' }}</div>
                   </div>
                 </div>
               </td>
               <td><span class="badge-roll">{{ s.rollNo }}</span></td>
               <td>{{ s.department }}</td>
               <td><span class="badge-course">{{ s.course }}</span></td>
-              <td><span class="badge-year">Year {{ s.year }}</span></td>
-              <td>{{ s.phoneNumber }}</td>
-              <td class="col-email">{{ s.email }}</td>
+              <td><span class="badge-year">Year {{ s.year || '—' }}</span></td>
+              <td><span class="badge-semester">Sem {{ s.semester || '—' }}</span></td>
+              <td>{{ s.phoneNumber || '—' }}</td>
+              <td class="col-email">{{ s.email || '—' }}</td>
               <td>
                 <span class="badge-status" :class="s.status ? 'active' : 'inactive'">
                   {{ s.status ? 'Active' : 'Inactive' }}
                 </span>
               </td>
               <td class="col-actions">
-                <button class="action-btn edit" @click="openModal(s)" title="Edit">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                </button>
-                <button class="action-btn delete" @click="confirmDelete(s)" title="Delete">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
+                <button class="action-btn edit" @click="openModal(s)" title="Edit">Edit</button>
+                <button class="action-btn delete" @click="confirmDelete(s)" title="Delete">Delete</button>
               </td>
             </tr>
           </tbody>
@@ -100,93 +91,129 @@
       </div>
     </div>
 
-    <!-- ── Add / Edit Modal ──────────────────────────────────────── -->
     <Teleport to="body">
       <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
         <div class="modal">
-
           <div class="modal-header">
             <h2>{{ editingStudent ? 'Edit Student' : 'Add Student' }}</h2>
-            <button class="modal-close" @click="closeModal">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            <button class="modal-close" @click="closeModal">×</button>
           </div>
 
           <form class="modal-form" @submit.prevent="saveStudent">
-            <div class="form-row">
-              <div class="field" :class="{ error: err.name }">
-                <label>Full Name</label>
-                <input v-model="form.name" type="text" placeholder="e.g. Rahul Sharma" />
-                <span class="err-msg" v-if="err.name">{{ err.name }}</span>
+            <div class="modal-body">
+              <div class="form-row">
+                <div class="field" :class="{ error: err.name }">
+                  <label>Full Name</label>
+                  <input v-model="form.name" type="text" placeholder="e.g. Rahul Sharma" />
+                  <span class="err-msg" v-if="err.name">{{ err.name }}</span>
+                </div>
+                <div class="field" :class="{ error: err.rollNumber }">
+                  <label>Roll Number</label>
+                  <input v-model="form.rollNumber" type="text" placeholder="e.g. CS101" />
+                  <span class="err-msg" v-if="err.rollNumber">{{ err.rollNumber }}</span>
+                </div>
               </div>
-              <div class="field" :class="{ error: err.rollNo }">
-                <label>Roll Number</label>
-                <input v-model="form.rollNo" type="text" placeholder="e.g. CS101" />
-                <span class="err-msg" v-if="err.rollNo">{{ err.rollNo }}</span>
+              <div class="form-row">
+                <div class="field" :class="{ error: err.departmentId }">
+                  <label>Department</label>
+                  <select v-model="form.departmentId">
+                    <option value="">Select department</option>
+                    <option v-for="department in departmentStore.departments" :key="department.id" :value="department.id">
+                      {{ department.name }}
+                    </option>
+                  </select>
+                  <span class="err-msg" v-if="err.departmentId">{{ err.departmentId }}</span>
+                </div>
+                <div class="field" :class="{ error: err.courseId }">
+                  <label>Course</label>
+                  <select v-model="form.courseId">
+                    <option value="">Select course</option>
+                    <option v-for="course in modalCourseOptions" :key="course.id" :value="course.id">
+                      {{ course.name }}
+                    </option>
+                  </select>
+                  <span class="err-msg" v-if="err.courseId">{{ err.courseId }}</span>
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="field" :class="{ error: err.department }">
-                <label>Department</label>
-                <input v-model="form.department" type="text" placeholder="e.g. Computer Science" />
-                <span class="err-msg" v-if="err.department">{{ err.department }}</span>
+              <div class="form-row">
+                <div class="field" :class="{ error: err.year }">
+                  <label>Year</label>
+                  <input v-model.number="form.year" type="number" min="1" max="10" placeholder="1" />
+                  <span class="err-msg" v-if="err.year">{{ err.year }}</span>
+                </div>
+                <div class="field" :class="{ error: err.semester }">
+                  <label>Semester</label>
+                  <input v-model.number="form.semester" type="number" min="1" max="12" placeholder="1" />
+                  <span class="err-msg" v-if="err.semester">{{ err.semester }}</span>
+                </div>
               </div>
-              <div class="field">
-                <label>Course</label>
-                <input v-model="form.course" type="text" placeholder="e.g. BCA" />
+              <div class="form-row">
+                <div class="field" :class="{ error: err.phone }">
+                  <label>Phone Number</label>
+                  <input v-model="form.phone" type="text" placeholder="10-digit number" />
+                  <span class="err-msg" v-if="err.phone">{{ err.phone }}</span>
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label>Year</label>
-                <input v-model="form.year" type="number" min="1" max="6" placeholder="1" />
+              <div class="form-row">
+                <div class="field" :class="{ error: err.email }">
+                  <label>Email</label>
+                  <input v-model="form.email" type="email" placeholder="student@example.com" />
+                  <span class="err-msg" v-if="err.email">{{ err.email }}</span>
+                </div>
+                <div class="field" :class="{ error: err.gender }">
+                  <label>Gender</label>
+                  <select v-model="form.gender">
+                    <option value="">Select gender</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                  <span class="err-msg" v-if="err.gender">{{ err.gender }}</span>
+                </div>
               </div>
-              <div class="field">
-                <label>Phone Number</label>
-                <input v-model="form.phoneNumber" type="text" placeholder="10-digit number" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field" :class="{ error: err.email }">
-                <label>Email</label>
-                <input v-model="form.email" type="email" placeholder="student@example.com" />
-                <span class="err-msg" v-if="err.email">{{ err.email }}</span>
-              </div>
-              <div class="field">
+              <div class="field" :class="{ error: err.address }">
                 <label>Address</label>
                 <input v-model="form.address" type="text" placeholder="City / Address" />
+                <span class="err-msg" v-if="err.address">{{ err.address }}</span>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label>Father's Name</label>
-                <input v-model="form.fatherName" type="text" />
+              <div class="form-row">
+                <div class="field">
+                  <label>Father's Name</label>
+                  <input v-model="form.fatherName" type="text" />
+                </div>
+                <div class="field">
+                  <label>Father's Phone</label>
+                  <input v-model="form.fatherPhone" type="text" />
+                </div>
               </div>
-              <div class="field">
-                <label>Father's Phone</label>
-                <input v-model="form.fatherPhone" type="text" />
+              <div class="form-row">
+                <div class="field">
+                  <label>Mother's Name</label>
+                  <input v-model="form.motherName" type="text" />
+                </div>
+                <div class="field">
+                  <label>Mother's Phone</label>
+                  <input v-model="form.motherPhone" type="text" />
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label>Mother's Name</label>
-                <input v-model="form.motherName" type="text" />
+              <div class="form-row">
+                <div class="field">
+                  <label>Father's Occupation</label>
+                  <input v-model="form.fatherOccupation" type="text" />
+                </div>
+                <div class="field">
+                  <label>Status</label>
+                  <select v-model="form.status">
+                    <option :value="true">Active</option>
+                    <option :value="false">Inactive</option>
+                  </select>
+                </div>
               </div>
-              <div class="field">
-                <label>Mother's Phone</label>
-                <input v-model="form.motherPhone" type="text" />
-              </div>
-            </div>
-
-            <!-- API error banner -->
-            <div class="api-error" v-if="apiError">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              {{ apiError }}
+              <div class="api-error" v-if="apiError">{{ apiError }}</div>
             </div>
 
             <div class="modal-actions">
               <button type="submit" class="btn-primary" :disabled="saving">
-                <svg v-if="saving" class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 {{ saving ? 'Saving…' : (editingStudent ? 'Save Changes' : 'Add Student') }}
               </button>
               <button type="button" class="btn-secondary" @click="closeModal" :disabled="saving">Cancel</button>
@@ -196,17 +223,15 @@
       </div>
     </Teleport>
 
-    <!-- ── Delete Confirm ────────────────────────────────────────── -->
     <Teleport to="body">
       <div class="modal-overlay" v-if="deleteTarget" @click.self="deleteTarget = null">
         <div class="modal modal-sm">
           <div class="modal-header">
             <h2>Delete Student</h2>
-            <button class="modal-close" @click="deleteTarget = null">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            <button class="modal-close" @click="deleteTarget = null">×</button>
           </div>
-          <p class="confirm-msg">Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>? This action cannot be undone.</p>
+          <p class="confirm-msg">Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>?</p>
+          <div v-if="deleteError" class="api-error delete-error">{{ deleteError }}</div>
           <div class="modal-actions">
             <button class="btn-danger" @click="doDelete">Yes, Delete</button>
             <button class="btn-secondary" @click="deleteTarget = null">Cancel</button>
@@ -214,101 +239,270 @@
         </div>
       </div>
     </Teleport>
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useStudentStore } from '../../stores/students'
+import { useDepartmentStore } from '../../stores/departments'
+import { useCourseStore } from '../../stores/courses'
 
 const store = useStudentStore()
+const departmentStore = useDepartmentStore()
+const courseStore = useCourseStore()
 
-// Fetch students from backend on page load
-onMounted(() => store.fetchStudents())
+const search = ref('')
+const departmentFilter = ref('')
+const courseFilter = ref('')
+const showModal = ref(false)
+const editingStudent = ref(null)
+const saving = ref(false)
+const apiError = ref('')
+const deleteTarget = ref(null)
+const deleteError = ref('')
 
-// Avatar initials helper
+const emptyForm = () => ({
+  name: '',
+  rollNumber: '',
+  email: '',
+  phone: '',
+  gender: '',
+  address: '',
+  year: 1,
+  semester: 1,
+  departmentId: '',
+  courseId: '',
+  fatherName: '',
+  fatherPhone: '',
+  fatherOccupation: '',
+  motherName: '',
+  motherPhone: '',
+  status: true,
+})
+
+const form = reactive(emptyForm())
+const createEmptyErrors = () => ({
+  name: '',
+  rollNumber: '',
+  departmentId: '',
+  courseId: '',
+  year: '',
+  semester: '',
+  phone: '',
+  email: '',
+  gender: '',
+  address: '',
+})
+
+const err = reactive(createEmptyErrors())
+
+onMounted(async () => {
+  await Promise.all([
+    departmentStore.fetchDepartments(),
+    courseStore.fetchCourses(),
+    store.fetchStudents(),
+  ])
+})
+
+watch(departmentFilter, async (value) => {
+  courseFilter.value = ''
+  await courseStore.fetchCourses(value ? { departmentId: value } : {})
+  await fetchFilteredStudents()
+})
+
+watch(courseFilter, fetchFilteredStudents)
+watch(() => form.departmentId, async (value) => {
+  if (showModal.value) {
+    await courseStore.fetchCourses(value ? { departmentId: value } : {})
+    if (value && !modalCourseOptions.value.find((course) => course.id === Number(form.courseId))) {
+      form.courseId = ''
+    }
+  }
+})
+
+async function fetchFilteredStudents() {
+  const filters = {}
+  if (departmentFilter.value) filters.departmentId = departmentFilter.value
+  if (courseFilter.value) filters.courseId = courseFilter.value
+  await store.fetchStudents(filters)
+}
+
 function initials(name = '') {
   const p = name.trim().split(' ')
   return (p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
-const search = ref('')
 const filtered = computed(() => {
   const q = search.value.toLowerCase()
   if (!q) return store.students
-  return store.students.filter(s =>
-    (s.name       || '').toLowerCase().includes(q) ||
-    (s.rollNo     || '').toLowerCase().includes(q) ||
+  return store.students.filter((s) =>
+    (s.name || '').toLowerCase().includes(q) ||
+    (s.rollNo || '').toLowerCase().includes(q) ||
+    (s.email || '').toLowerCase().includes(q) ||
     (s.department || '').toLowerCase().includes(q) ||
-    (s.course     || '').toLowerCase().includes(q)
+    (s.course || '').toLowerCase().includes(q)
   )
 })
 
-// ── Modal state ─────────────────────────────────────────────────────────────
-const showModal      = ref(false)
-const editingStudent = ref(null)
-const saving         = ref(false)
-const apiError       = ref('')
-
-const emptyForm = () => ({
-  name: '', rollNo: '', department: '', course: '', year: 1,
-  phoneNumber: '', email: '', address: '',
-  fatherName: '', fatherPhone: '', fatherOccupation: '',
-  motherName: '', motherPhone: '',
+const filteredCourseOptions = computed(() => {
+  if (!departmentFilter.value) return courseStore.courses
+  return courseStore.courses.filter((course) => String(course.departmentId) === departmentFilter.value)
 })
-const form = reactive(emptyForm())
-const err  = reactive({ name: '', rollNo: '', department: '', email: '' })
+
+const modalCourseOptions = computed(() => {
+  if (!form.departmentId) return courseStore.courses
+  return courseStore.courses.filter((course) => course.departmentId === Number(form.departmentId))
+})
 
 function openModal(student = null) {
   editingStudent.value = student
   apiError.value = ''
-  Object.assign(err, { name: '', rollNo: '', department: '', email: '' })
-  Object.assign(form, student ? { ...student } : emptyForm())
+  Object.assign(err, createEmptyErrors())
+  Object.assign(form, student ? {
+    name: student.name,
+    rollNumber: student.rollNo,
+    email: student.email,
+    phone: student.phoneNumber,
+    gender: student.gender,
+    address: student.address,
+    year: student.year,
+    semester: student.semester,
+    departmentId: student.departmentId,
+    courseId: student.courseId,
+    fatherName: student.fatherName,
+    fatherPhone: student.fatherPhone,
+    fatherOccupation: student.fatherOccupation,
+    motherName: student.motherName,
+    motherPhone: student.motherPhone,
+    status: student.status,
+  } : emptyForm())
+  courseStore.fetchCourses(form.departmentId ? { departmentId: form.departmentId } : {})
   showModal.value = true
 }
 
-function closeModal() {
-  if (saving.value) return   // don't close while request in flight
-  showModal.value = false
+function closeModal(force = false) {
+  if (force || !saving.value) showModal.value = false
 }
 
 function validate() {
-  err.name       = form.name.trim()       ? '' : 'Name is required.'
-  err.rollNo     = form.rollNo.trim()     ? '' : 'Roll number is required.'
-  err.department = form.department.trim() ? '' : 'Department is required.'
-  err.email      = form.email.trim()      ? '' : 'Email is required.'
+  const email = form.email?.trim() || ''
+  const phone = form.phone?.trim() || ''
+  const address = form.address?.trim() || ''
+
+  err.name = form.name.trim() ? '' : 'Full name is required.'
+  err.rollNumber = form.rollNumber.trim() ? '' : 'Roll number is required.'
+  err.departmentId = form.departmentId ? '' : 'Department is required.'
+  err.courseId = form.courseId ? '' : 'Course is required.'
+  err.year = Number.isInteger(Number(form.year)) && Number(form.year) >= 1 && Number(form.year) <= 10
+    ? ''
+    : 'Year must be between 1 and 10.'
+  err.semester = Number.isInteger(Number(form.semester)) && Number(form.semester) >= 1 && Number(form.semester) <= 12
+    ? ''
+    : 'Semester must be between 1 and 12.'
+  err.phone = !phone
+    ? 'Phone number is required.'
+    : (/^\d{10,15}$/.test(phone) ? '' : 'Phone number must contain 10 to 15 digits.')
+  err.email = !email
+    ? 'Email is required.'
+    : (/\S+@\S+\.\S+/.test(email) ? '' : 'Enter a valid email.')
+  err.gender = form.gender ? '' : 'Gender is required.'
+  err.address = address ? '' : 'Address is required.'
   return !Object.values(err).some(Boolean)
+}
+
+function applyServerErrors(payload) {
+  if (!payload || typeof payload !== 'object' || !payload.errors) return false
+  let matched = false
+  const fieldMap = {
+    name: 'name',
+    rollNumber: 'rollNumber',
+    departmentId: 'departmentId',
+    courseId: 'courseId',
+    year: 'year',
+    semester: 'semester',
+    phone: 'phone',
+    email: 'email',
+    gender: 'gender',
+    address: 'address',
+  }
+
+  Object.entries(payload.errors).forEach(([field, message]) => {
+    const targetField = fieldMap[field]
+    if (targetField && targetField in err) {
+      err[targetField] = message
+      matched = true
+    }
+  })
+
+  return matched
+}
+
+function toPayload() {
+  return {
+    name: form.name.trim(),
+    rollNumber: form.rollNumber.trim(),
+    email: form.email?.trim() || null,
+    phone: form.phone?.trim() || null,
+    gender: form.gender || null,
+    address: form.address?.trim() || null,
+    year: Number(form.year) || null,
+    semester: Number(form.semester) || null,
+    departmentId: Number(form.departmentId),
+    courseId: Number(form.courseId),
+    fatherName: form.fatherName?.trim() || null,
+    fatherPhone: form.fatherPhone?.trim() || null,
+    fatherOccupation: form.fatherOccupation?.trim() || null,
+    motherName: form.motherName?.trim() || null,
+    motherPhone: form.motherPhone?.trim() || null,
+    status: !!form.status,
+  }
 }
 
 async function saveStudent() {
   if (!validate()) return
-  saving.value   = true
+  saving.value = true
   apiError.value = ''
-
-  let result
-  if (editingStudent.value) {
-    result = await store.updateStudent(editingStudent.value.id, { ...form })
-  } else {
-    result = await store.addStudent({ ...form })
-  }
-
-  saving.value = false
-
-  if (result?.success === false) {
-    apiError.value = result.error || 'Something went wrong. Please try again.'
-  } else {
-    closeModal()
+  try {
+    let savedStudent
+    if (editingStudent.value) {
+      savedStudent = await store.updateStudent(editingStudent.value.id, toPayload())
+    } else {
+      savedStudent = await store.addStudent(toPayload())
+      search.value = ''
+      if (!departmentFilter.value || Number(departmentFilter.value) !== savedStudent.departmentId) {
+        departmentFilter.value = savedStudent.departmentId ? String(savedStudent.departmentId) : ''
+      }
+      if (!courseFilter.value || Number(courseFilter.value) !== savedStudent.courseId) {
+        courseFilter.value = savedStudent.courseId ? String(savedStudent.courseId) : ''
+      }
+    }
+    await fetchFilteredStudents()
+    closeModal(true)
+  } catch (e) {
+    const hasFieldErrors = applyServerErrors(e.payload)
+    apiError.value = hasFieldErrors
+      ? 'Please correct the highlighted fields.'
+      : (e.message || 'Something went wrong. Please try again.')
+  } finally {
+    saving.value = false
   }
 }
 
-// ── Delete ──────────────────────────────────────────────────────────────────
-const deleteTarget = ref(null)
-function confirmDelete(s) { deleteTarget.value = s }
-function doDelete() {
-  store.deleteStudent(deleteTarget.value.id)
-  deleteTarget.value = null
+function confirmDelete(student) {
+  deleteTarget.value = student
+  deleteError.value = ''
+}
+
+async function doDelete() {
+  if (!deleteTarget.value) return
+  try {
+    await store.deleteStudent(deleteTarget.value.id)
+    deleteTarget.value = null
+    deleteError.value = ''
+  } catch (e) {
+    deleteError.value = e.message || 'Unable to delete student.'
+  }
 }
 </script>
 
@@ -375,6 +569,18 @@ function doDelete() {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px;
   border-bottom: 1px solid #f3f4f6;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-filters { display: flex; gap: 10px; flex-wrap: wrap; }
+.toolbar-select {
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 13px;
 }
 
 .search-bar {
@@ -456,6 +662,12 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   padding: 3px 9px; border-radius: 6px;
 }
 
+.badge-semester {
+  background: #fef3c7; color: #d97706;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 9px; border-radius: 6px;
+}
+
 .badge-status {
   font-size: 11.5px; font-weight: 700;
   padding: 3px 10px; border-radius: 99px;
@@ -495,8 +707,11 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   background: #fff;
   border-radius: 16px;
   width: 100%; max-width: 540px;
+  max-height: min(92vh, 860px);
   box-shadow: 0 20px 60px rgba(0,0,0,0.18);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   animation: modal-in 0.2s ease;
 }
 .modal-sm { max-width: 400px; }
@@ -510,6 +725,8 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 20px 24px 16px;
   border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+  background: #fff;
 }
 .modal-header h2 {
   font-size: 18px; font-weight: 700; color: #111827; margin: 0;
@@ -523,7 +740,21 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
 .modal-close:hover { color: #374151; background: #f3f4f6; }
 
 /* ── Form inside modal ──────────────────────────────────────────── */
-.modal-form { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.modal-body {
+  padding: 20px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -554,7 +785,10 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
 }
 
 .modal-actions {
-  display: flex; gap: 10px; padding: 0 24px 20px;
+  display: flex; gap: 10px; padding: 16px 24px 20px;
+  border-top: 1px solid #f3f4f6;
+  background: #fff;
+  flex-shrink: 0;
 }
 
 .btn-primary {
@@ -582,4 +816,19 @@ tbody td { padding: 12px 16px; color: #374151; vertical-align: middle; }
   transition: background 0.15s; font-family: inherit;
 }
 .btn-danger:hover { background: #dc2626; }
+
+@media (max-height: 760px) {
+  .modal-overlay { padding: 12px; }
+  .modal { max-height: calc(100vh - 24px); }
+  .modal-header { padding: 16px 20px 14px; }
+  .modal-body { padding: 16px 20px 10px; }
+  .modal-actions { padding: 14px 20px 16px; }
+}
+
+@media (max-width: 640px) {
+  .form-row { grid-template-columns: 1fr; }
+  .modal { max-width: 100%; }
+  .modal-actions { flex-direction: column-reverse; }
+  .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+}
 </style>

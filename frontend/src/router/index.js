@@ -1,21 +1,29 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
-  // Public
   {
     path: '/',
+    redirect: '/login',
+  },
+  {
+    path: '/login',
     name: 'Login',
     component: () => import('../Login.vue'),
+    meta: { guestOnly: true },
   },
-
-  // Authenticated — wrapped in MainLayout (sidebar)
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('../views/auth/SignupView.vue'),
+    meta: { guestOnly: true },
+  },
   {
     path: '/app',
     component: () => import('../layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
     children: [
       { path: '', redirect: '/app/home' },
-
-      // Student
       {
         path: 'home',
         name: 'Home',
@@ -46,8 +54,31 @@ const routes = [
         name: 'AttendanceReport',
         component: () => import('../views/students/AttendanceReport.vue'),
       },
-
-
+      {
+        path: 'assignments',
+        name: 'Assignments',
+        component: () => import('../views/assignments/AssignmentList.vue'),
+      },
+      {
+        path: 'notes',
+        name: 'Notes',
+        component: () => import('../views/notes/NoteList.vue'),
+      },
+      {
+        path: 'departments',
+        name: 'Departments',
+        component: () => import('../views/departments/DepartmentList.vue'),
+      },
+      {
+        path: 'courses',
+        name: 'Courses',
+        component: () => import('../views/courses/CourseList.vue'),
+      },
+      {
+        path: 'subjects',
+        name: 'Subjects',
+        component: () => import('../views/subjects/SubjectList.vue'),
+      },
     ],
   },
 ]
@@ -57,22 +88,20 @@ const router = createRouter({
   routes,
 })
 
-// Authentication Guard
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('user'))
-  const isAuthenticated = !!user
+  const authStore = useAuthStore()
 
-  // If trying to access /app but NOT logged in -> redirect to /
-  if (to.path.startsWith('/app') && !isAuthenticated) {
-    next('/')
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next('/login')
+    return
   }
-  // If trying to access / (login) but IS logged in -> redirect to /app/home
-  else if (to.path === '/' && isAuthenticated) {
+
+  if (to.meta.guestOnly && authStore.isAuthenticated) {
     next('/app/home')
+    return
   }
-  else {
-    next()
-  }
+
+  next()
 })
 
 export default router

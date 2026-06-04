@@ -44,10 +44,10 @@
     <div class="sb-footer">
       <!-- Expanded: user card + logout row -->
       <div class="sb-user" v-show="!collapsed">
-        <div class="sb-avatar">A</div>
+        <div class="sb-avatar">{{ teacherInitials }}</div>
         <div class="sb-user-info">
-          <span class="sb-user-name">Admin</span>
-          <span class="sb-user-role">Administrator</span>
+          <span class="sb-user-name">{{ teacher?.fullName || 'Teacher' }}</span>
+          <span class="sb-user-role">{{ teacher?.email || 'Authenticated teacher' }}</span>
         </div>
         <button class="logout-btn" @click="logout" title="Logout">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -60,7 +60,7 @@
 
       <!-- Collapsed: avatar + logout icon stacked -->
       <div class="collapsed-footer" v-show="collapsed">
-        <div class="sb-avatar centered">A</div>
+        <div class="sb-avatar centered">{{ teacherInitials }}</div>
         <button class="logout-btn-collapsed" @click="logout" title="Logout">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -85,8 +85,19 @@ const collapsed = ref(false)
 
 function logout() {
   authStore.logout()
-  router.push('/')
+  router.push('/login')
 }
+
+const teacher = computed(() => authStore.teacher)
+const teacherInitials = computed(() => {
+  const fullName = teacher.value?.fullName || 'Teacher'
+  return fullName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
+})
 
 const studentNav = [
   {
@@ -100,9 +111,34 @@ const studentNav = [
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
   },
   {
+    label: 'Departments',
+    to: '/app/departments',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></svg>`,
+  },
+  {
+    label: 'Courses',
+    to: '/app/courses',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l10-4 10 4-10 4-10-4z"/><path d="M5 10.5v5l7 3 7-3v-5"/><path d="M19 8v8"/></svg>`,
+  },
+  {
+    label: 'Subjects',
+    to: '/app/subjects',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>`,
+  },
+  {
     label: 'Attendance',
     to: '/app/students/attendance',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+  },
+  {
+    label: 'Assignments',
+    to: '/app/assignments',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/><path d="M16 3h5v5"/></svg>`,
+  },
+  {
+    label: 'Notes',
+    to: '/app/notes',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V4a2 2 0 0 1 2-2h8.5L20 7.5V19.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`,
   },
   {
     label: 'Att. Report',

@@ -5,25 +5,41 @@ import jakarta.persistence.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "student")
+@Table(name = "student", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_student_teacher_roll_no", columnNames = {"teacher_id", "roll_no"})
+})
 public class Student {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "name")
+
+    @Column(name = "name", nullable = false)
     private String name;
+
     @Column(name = "father_name")
     private String fatherName;
 
     @Column(name = "mother_name")
     private String motherName;
 
-    @Column(name = "roll_no")
+    @Column(name = "roll_no", nullable = false)
     private String rollNo;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "teacher_id", nullable = false, foreignKey = @ForeignKey(name = "fk_student_teacher"))
+    private Teacher teacher;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", foreignKey = @ForeignKey(name = "fk_student_department"))
+    private Department departmentRef;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", foreignKey = @ForeignKey(name = "fk_student_course"))
+    private Course courseRef;
+
     @Column(name = "department")
-    private String department;
+    private String legacyDepartment;
 
     @Column(name = "phone_number")
     private String phoneNumber;
@@ -44,7 +60,7 @@ public class Student {
     private Double attendancePercentage;
 
     @Column(name = "course")
-    private String course;
+    private String legacyCourse;
 
     @Column(name = "father_occupation")
     private String fatherOccupation;
@@ -52,12 +68,20 @@ public class Student {
     @Column(name = "year")
     private Integer year;
 
+    @Column(name = "semester")
+    private Integer semester;
+
+    @Column(name = "gender", length = 20)
+    private String gender;
+
     @Column(name = "status")
     private Boolean status;
 
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on")
     private Date createdOn;
 
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on")
     private Date updatedOn;
 
@@ -67,7 +91,19 @@ public class Student {
     @Column(name = "updated_by")
     private String updatedBy;
 
-    public Student() {
+    @PrePersist
+    public void prePersist() {
+        Date now = new Date();
+        if (this.status == null) {
+            this.status = Boolean.TRUE;
+        }
+        this.createdOn = now;
+        this.updatedOn = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedOn = new Date();
     }
 
     public Long getId() {
@@ -110,12 +146,36 @@ public class Student {
         this.rollNo = rollNo;
     }
 
-    public String getDepartment() {
-        return department;
+    public Teacher getTeacher() {
+        return teacher;
     }
 
-    public void setDepartment(String department) {
-        this.department = department;
+    public void setTeacher(Teacher teacher) {
+        this.teacher = teacher;
+    }
+
+    public Department getDepartmentRef() {
+        return departmentRef;
+    }
+
+    public void setDepartmentRef(Department departmentRef) {
+        this.departmentRef = departmentRef;
+    }
+
+    public Course getCourseRef() {
+        return courseRef;
+    }
+
+    public void setCourseRef(Course courseRef) {
+        this.courseRef = courseRef;
+    }
+
+    public String getLegacyDepartment() {
+        return legacyDepartment;
+    }
+
+    public void setLegacyDepartment(String legacyDepartment) {
+        this.legacyDepartment = legacyDepartment;
     }
 
     public String getPhoneNumber() {
@@ -166,12 +226,12 @@ public class Student {
         this.attendancePercentage = attendancePercentage;
     }
 
-    public String getCourse() {
-        return course;
+    public String getLegacyCourse() {
+        return legacyCourse;
     }
 
-    public void setCourse(String course) {
-        this.course = course;
+    public void setLegacyCourse(String legacyCourse) {
+        this.legacyCourse = legacyCourse;
     }
 
     public String getFatherOccupation() {
@@ -188,6 +248,22 @@ public class Student {
 
     public void setYear(Integer year) {
         this.year = year;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 
     public Boolean getStatus() {

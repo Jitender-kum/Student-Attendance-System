@@ -29,7 +29,7 @@
     <div class="form-panel">
       <div class="form-card">
         <div class="form-header">
-          <h2>Welcome back 👋</h2>
+          <h2>Teacher Login</h2>
           <p>Sign in to your account to continue</p>
         </div>
 
@@ -41,23 +41,22 @@
 
         <form class="login-form" @submit.prevent="handleLogin" novalidate>
 
-          <!-- Username -->
-          <div class="field" :class="{ error: errors.username }">
-            <label for="username">Username</label>
+          <div class="field" :class="{ error: errors.email }">
+            <label for="email">Email</label>
             <div class="input-wrap">
               <span class="input-icon">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
               </span>
               <input
-                id="username"
-                v-model="form.username"
-                type="text"
-                placeholder="Enter your username"
+                id="email"
+                v-model="form.email"
+                type="email"
+                placeholder="Enter your email"
                 autocomplete="username"
-                @input="clearError('username')"
+                @input="clearError('email')"
               />
             </div>
-            <span class="error-msg" v-if="errors.username">{{ errors.username }}</span>
+            <span class="error-msg" v-if="errors.email">{{ errors.email }}</span>
           </div>
 
           <!-- Password -->
@@ -95,6 +94,11 @@
             <span v-else class="spinner"></span>
           </button>
 
+          <p class="switch-auth">
+            New teacher?
+            <RouterLink to="/signup">Create an account</RouterLink>
+          </p>
+
         </form>
       </div>
     </div>
@@ -103,19 +107,17 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
+import { authService } from './services/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-// ── Dummy credentials (hardcoded) ──────────────────────────────────────────
-const DUMMY_USER = { username: 'admin', password: 'admin123' }
-
 // ── State ───────────────────────────────────────────────────────────────────
-const form = reactive({ username: '', password: '' })
-const errors = reactive({ username: '', password: '' })
+const form = reactive({ email: '', password: '' })
+const errors = reactive({ email: '', password: '' })
 const loginError = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
@@ -129,35 +131,23 @@ const features = [
 
 // ── Actions ─────────────────────────────────────────────────────────────────
 async function handleLogin() {
-  // 1. Reset
   loginError.value = ''
-  errors.username = ''
+  errors.email = ''
   errors.password = ''
 
-  // 2. Validate
   if (!validate()) return
 
-  // 3. Process
   loading.value = true
-  
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 800))
 
   try {
-    if (form.username === DUMMY_USER.username && form.password === DUMMY_USER.password) {
-      // Success
-      authStore.login({
-        username: form.username,
-        role: 'Administrator',
-        avatar: 'A'
-      })
-      router.push('/app/home')
-    } else {
-      // Failed
-      loginError.value = 'Invalid username or password. Please try again.'
-    }
+    const payload = await authService.login({
+      email: form.email.trim(),
+      password: form.password,
+    })
+    authStore.login(payload)
+    router.push('/app/home')
   } catch (err) {
-    loginError.value = 'Something went wrong. Please try again later.'
+    loginError.value = err.message || 'Something went wrong. Please try again later.'
   } finally {
     loading.value = false
   }
@@ -166,8 +156,11 @@ async function handleLogin() {
 // ── Validation ──────────────────────────────────────────────────────────────
 function validate() {
   let valid = true
-  if (!form.username.trim()) {
-    errors.username = 'Username is required.'
+  if (!form.email.trim()) {
+    errors.email = 'Email is required.'
+    valid = false
+  } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+    errors.email = 'Enter a valid email address.'
     valid = false
   }
   if (!form.password) {
@@ -455,6 +448,19 @@ function clearError(field) {
 .btn-login:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.switch-auth {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.switch-auth a {
+  color: #7c3aed;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────── */

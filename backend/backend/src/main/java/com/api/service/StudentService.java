@@ -1,17 +1,16 @@
 package com.api.service;
 
-import com.api.model.Student;
+import com.api.dto.StudentDtos;
+
 import java.util.List;
 
 public interface StudentService {
 
-    List<Student> getStudentList();
+    List<StudentDtos.StudentResponse> getStudents(Long departmentId, Long courseId);
 
-   // Student getStudentById(int id);
+    StudentDtos.StudentResponse createStudent(StudentDtos.StudentRequest request);
 
-    Student saveStudent(Student student);
+    StudentDtos.StudentResponse updateStudent(Long id, StudentDtos.StudentRequest request);
 
-  //  void deleteStudent(int id);
-//
-    Student updateStudent(Student student);
+    void deleteStudent(Long id);
 }

@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <h1>Dashboard</h1>
-      <p>Welcome back, Admin! Here's an overview of the attendance system.</p>
+      <p>Welcome back, {{ teacherName }}! Here's an overview of the attendance system.</p>
     </div>
 
     <div class="stats-grid">
@@ -23,9 +23,11 @@
 import { onMounted, computed } from 'vue'
 import { useStudentStore } from '../stores/students'
 import { useAttendanceStore } from '../stores/attendance'
+import { useAuthStore } from '../stores/auth'
 
 const studentStore = useStudentStore()
 const attStore = useAttendanceStore()
+const authStore = useAuthStore()
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -35,6 +37,8 @@ onMounted(async () => {
   // Fetch today's attendance
   await attStore.fetchByDate(today)
 })
+
+const teacherName = computed(() => authStore.teacher?.fullName || 'Teacher')
 
 const summary = computed(() => {
   return attStore.getDateSummary(today, studentStore.students)

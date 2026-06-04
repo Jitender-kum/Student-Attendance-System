@@ -1,24 +1,50 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+
+const AUTH_STORAGE_KEY = 'attendease_auth'
+
+function loadAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('user')) || null)
-  const isAuthenticated = computed(() => !!user.value)
+  const session = ref(loadAuth())
 
-  function login(userData) {
-    user.value = userData
-    localStorage.setItem('user', JSON.stringify(userData))
+  const token = computed(() => session.value?.token || '')
+  const teacher = computed(() => session.value?.teacher || null)
+  const isAuthenticated = computed(() => !!token.value)
+
+  function setSession(payload) {
+    session.value = payload
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+  }
+
+  function clearSession() {
+    session.value = null
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+  }
+
+  function login(authResponse) {
+    setSession(authResponse)
   }
 
   function logout() {
-    user.value = null
-    localStorage.removeItem('user')
+    clearSession()
   }
 
   return {
-    user,
+    session,
+    token,
+    teacher,
     isAuthenticated,
     login,
-    logout
+    logout,
+    setSession,
+    clearSession,
   }
 })

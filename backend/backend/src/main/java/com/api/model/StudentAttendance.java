@@ -1,27 +1,35 @@
 package com.api.model;
 
-import com.api.enums.AttendanceEnums;
+import com.api.enums.AttendanceStatus;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.util.Date;
+
 @Entity
-@Table(name = "student_attendance")
+@Table(name = "student_attendance", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_attendance_student_date", columnNames = {"student_id", "attendance_date"})
+})
 public class StudentAttendance {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "student_id", nullable = false)
-    private Long studentId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "student_id", nullable = false, foreignKey = @ForeignKey(name = "fk_attendance_student"))
+    private Student student;
 
-    @Temporal(TemporalType.DATE)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "teacher_id", nullable = false, foreignKey = @ForeignKey(name = "fk_attendance_teacher"))
+    private Teacher teacher;
+
     @Column(name = "attendance_date", nullable = false, columnDefinition = "DATE")
-    private Date attendanceDate;
+    private LocalDate attendanceDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "attendance_status", nullable = false)
-    private AttendanceEnums attendanceStatus;
+    @Column(name = "attendance_status", nullable = false, length = 20)
+    private AttendanceStatus attendanceStatus;
 
     @Column(name = "created_by")
     private String createdBy;
@@ -37,7 +45,16 @@ public class StudentAttendance {
     @Column(name = "updated_on")
     private Date updatedOn;
 
-    public StudentAttendance() {
+    @PrePersist
+    public void prePersist() {
+        Date now = new Date();
+        this.createdOn = now;
+        this.updatedOn = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedOn = new Date();
     }
 
     public Long getId() {
@@ -48,27 +65,35 @@ public class StudentAttendance {
         this.id = id;
     }
 
-    public Long getStudentId() {
-        return studentId;
+    public Student getStudent() {
+        return student;
     }
 
-    public void setStudentId(Long studentId) {
-        this.studentId = studentId;
+    public void setStudent(Student student) {
+        this.student = student;
     }
 
-    public Date getAttendanceDate() {
+    public Teacher getTeacher() {
+        return teacher;
+    }
+
+    public void setTeacher(Teacher teacher) {
+        this.teacher = teacher;
+    }
+
+    public LocalDate getAttendanceDate() {
         return attendanceDate;
     }
 
-    public void setAttendanceDate(Date attendanceDate) {
+    public void setAttendanceDate(LocalDate attendanceDate) {
         this.attendanceDate = attendanceDate;
     }
 
-    public AttendanceEnums getAttendanceStatus() {
+    public AttendanceStatus getAttendanceStatus() {
         return attendanceStatus;
     }
 
-    public void setAttendanceStatus(AttendanceEnums attendanceStatus) {
+    public void setAttendanceStatus(AttendanceStatus attendanceStatus) {
         this.attendanceStatus = attendanceStatus;
     }
 
