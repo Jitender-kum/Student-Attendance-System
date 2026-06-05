@@ -1,3 +1,5 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
 CREATE TABLE IF NOT EXISTS subject (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     teacher_id BIGINT NOT NULL,
@@ -110,3 +112,5 @@ SET @attendance_session_subject_fk_sql := IF(
 PREPARE attendance_session_subject_fk_stmt FROM @attendance_session_subject_fk_sql;
 EXECUTE attendance_session_subject_fk_stmt;
 DEALLOCATE PREPARE attendance_session_subject_fk_stmt;
+
+SET FOREIGN_KEY_CHECKS = 1;

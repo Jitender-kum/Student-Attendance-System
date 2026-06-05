@@ -1,3 +1,5 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
 CREATE TABLE IF NOT EXISTS attendance_session (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     teacher_id BIGINT NOT NULL,
@@ -132,3 +134,5 @@ LEFT JOIN attendance_entry entry_existing
    AND entry_existing.student_id = sa.student_id
 WHERE sa.teacher_id IS NOT NULL
   AND entry_existing.id IS NULL;
+
+SET FOREIGN_KEY_CHECKS = 1;
