@@ -72,15 +72,35 @@ CREATE TABLE IF NOT EXISTS course (
     CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id) REFERENCES teacher (id)
 );
 
-ALTER TABLE student
-    ADD COLUMN IF NOT EXISTS teacher_id BIGINT NULL,
-    ADD COLUMN IF NOT EXISTS department_id BIGINT NULL,
-    ADD COLUMN IF NOT EXISTS course_id BIGINT NULL,
-    ADD COLUMN IF NOT EXISTS gender VARCHAR(20) NULL,
-    ADD COLUMN IF NOT EXISTS semester INT NULL;
+-- Check and add student.teacher_id
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND COLUMN_NAME = 'teacher_id');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student ADD COLUMN teacher_id BIGINT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-ALTER TABLE student_attendance
-    ADD COLUMN IF NOT EXISTS teacher_id BIGINT NULL;
+-- Check and add student.department_id
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND COLUMN_NAME = 'department_id');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student ADD COLUMN department_id BIGINT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Check and add student.course_id
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND COLUMN_NAME = 'course_id');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student ADD COLUMN course_id BIGINT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Check and add student.gender
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND COLUMN_NAME = 'gender');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student ADD COLUMN gender VARCHAR(20) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Check and add student.semester
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND COLUMN_NAME = 'semester');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student ADD COLUMN semester INT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Check and add student_attendance.teacher_id
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student_attendance' AND COLUMN_NAME = 'teacher_id');
+SET @sql_stmt := IF(@col_exists = 0, 'ALTER TABLE student_attendance ADD COLUMN teacher_id BIGINT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql_stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Check and add fk_student_teacher
 SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND CONSTRAINT_NAME = 'fk_student_teacher');
